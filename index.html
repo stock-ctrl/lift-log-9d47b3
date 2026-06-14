@@ -848,7 +848,7 @@ function stopWorkoutClock(){ if(clockInt){ clearInterval(clockInt); clockInt=nul
 
 /* ---------- rest timer (countdown + custom alert) ----------
    The chime is scheduled on the audio hardware clock (not a JS timer), so it has the
-   best chance of firing even if Trever has switched to YouTube or a podcast. The
+   best chance of firing even if Trevor has switched to YouTube or a podcast. The
    optional keep-alive (bgAlert) holds the audio session open while resting. iOS
    background behavior varies, so this is best-effort: rock solid in the foreground,
    and the cross-app case is worth testing on his actual phone. */
