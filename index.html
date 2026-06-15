@@ -377,6 +377,13 @@ input,textarea{font-family:inherit;}
 .sound-opt .chk{color:var(--accent);opacity:0;flex-shrink:0;}
 .sound-opt.sel .chk{opacity:1;}
 .sound-opt .chk svg{width:18px;height:18px;display:block;}
+.vol-row{display:flex;align-items:center;gap:12px;margin-top:14px;}
+.vol-row .vol-ic{color:var(--muted);flex-shrink:0;display:flex;}
+.vol-row .vol-ic svg{width:20px;height:20px;}
+.vol-row input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:5px;background:var(--line-2);outline:none;}
+.vol-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);cursor:pointer;border:3px solid var(--card);box-shadow:0 1px 4px oklch(0.25 0.02 55/.3);}
+.vol-row input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;border:3px solid var(--card);}
+.vol-row .vol-val{font-size:13px;font-weight:750;color:var(--ink-2);width:42px;text-align:right;flex-shrink:0;}
 .toggle-row{display:flex;align-items:center;gap:14px;justify-content:space-between;margin:16px 2px 2px;}
 .toggle-row .tg-t{font-size:14.5px;font-weight:750;color:var(--ink);}
 .toggle-row .tg-s{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5;}
@@ -613,6 +620,11 @@ input,textarea{font-family:inherit;}
     <h2 class="h-sec">Rest alert</h2>
     <p class="note-txt" style="margin-top:0;">A gentle custom chime when rest is up. Tap each one to hear it. It's our own sound, not the iPhone's alarm, and it just briefly dips his music or podcast. This is the only cue that can reach him while he's in another app.</p>
     <div class="sound-list" id="alertList"></div>
+    <div class="vol-row">
+      <span class="vol-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 010 6"/><path d="M18.5 7a7 7 0 010 10"/></svg></span>
+      <input type="range" id="alertVol" min="0" max="100" step="5" aria-label="Alert volume">
+      <span class="vol-val num" id="alertVolVal">70%</span>
+    </div>
     <div class="toggle-row" id="bgRow">
       <div>
         <div class="tg-t">Alert me in other apps</div>
@@ -689,6 +701,7 @@ const BW_KEY    = "trever_bw_v2";
 const REST_KEY  = "trever_rest_v2";
 const ROUTINES_KEY = "trever_routines_v2";
 const ALERT_KEY    = "trever_alert_v2";
+const ALERTVOL_KEY = "trever_alertvol_v2";
 const BG_KEY       = "trever_bgalert_v2";
 
 const STARTER = ["Bench Press","Squat","Deadlift","Overhead Press","Barbell Row",
@@ -711,6 +724,8 @@ let unit = localStorage.getItem(UNIT_KEY) || "lb";
 let restTarget = parseInt(localStorage.getItem(REST_KEY),10) || 90;
 let alertSound = localStorage.getItem(ALERT_KEY) || "soft";
 if(!["soft","bell","wood","off"].includes(alertSound)) alertSound="soft";
+let alertVol = parseFloat(localStorage.getItem(ALERTVOL_KEY)); if(isNaN(alertVol)) alertVol=0.7;
+alertVol = Math.min(1, Math.max(0, alertVol));
 let bgAlert    = localStorage.getItem(BG_KEY)==="1";
 let sessionPRs = {};   // exercise name (lowercased) -> best e1RM already celebrated this session
 
@@ -891,8 +906,9 @@ function ensureAudio(){
 function tone(at,freq,dur,peak,type){
   const o=audioCtx.createOscillator(), g=audioCtx.createGain();
   o.type=type||"sine"; o.frequency.value=freq; o.connect(g); g.connect(audioCtx.destination);
+  const pk=Math.max(0.0004, peak*alertVol);             // in-app volume scaler
   g.gain.setValueAtTime(0.0001,at);
-  g.gain.exponentialRampToValueAtTime(peak,at+0.025);   // soft attack, no click
+  g.gain.exponentialRampToValueAtTime(pk,at+0.025);     // soft attack, no click
   g.gain.exponentialRampToValueAtTime(0.0001,at+dur);   // natural fade
   o.start(at); o.stop(at+dur+0.05); scheduledNodes.push(o);
 }
@@ -1217,6 +1233,13 @@ function renderAlertList(){
   });
 }
 function renderBgSwitch(){ const s=document.getElementById("bgSwitch"); if(s) s.classList.toggle("on",bgAlert); }
+function renderAlertVol(){
+  const el=document.getElementById("alertVol"); if(!el) return;
+  const pct=Math.round(alertVol*100);
+  el.value=pct;
+  el.style.background="linear-gradient(90deg, var(--accent) "+pct+"%, var(--line-2) "+pct+"%)";
+  document.getElementById("alertVolVal").textContent=pct+"%";
+}
 function exportData(){
   const data=JSON.stringify({app:"trever-lifting-log",version:2,unit,restTarget,exportedFrom:DAD_NAME,
     workouts:loadWorkouts(),bodyweight:loadBW()},null,2);
@@ -1345,6 +1368,12 @@ document.getElementById("restMinus").onclick=()=>adjustRest(-15);
 document.getElementById("restPlus").onclick=()=>adjustRest(15);
 document.getElementById("bgSwitch").onclick=()=>{ bgAlert=!bgAlert; localStorage.setItem(BG_KEY,bgAlert?"1":"0"); renderBgSwitch(); ensureAudio();
   toast(bgAlert?"On — test it on his phone":"Off"); };
+document.getElementById("alertVol").addEventListener("input",e=>{
+  alertVol=Math.min(1,Math.max(0,(+e.target.value)/100)); localStorage.setItem(ALERTVOL_KEY,String(alertVol)); renderAlertVol();
+});
+document.getElementById("alertVol").addEventListener("change",()=>{
+  if(alertSound!=="off"){ ensureAudio(); if(audioCtx) scheduleAlert(audioCtx.currentTime+0.06); }
+});
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ ensureAudio();
   if(document.getElementById("rest").classList.contains("show")) tickRest(); tickClock(); } });
 document.getElementById("exportBtn").onclick=exportData;
@@ -1363,7 +1392,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
   document.title=DAD_NAME+"'s Lifting Log";
   document.getElementById("unitLabel").textContent=unit;
   document.getElementById("unitToggle").textContent="Switch to "+(unit==="lb"?"kg":"lb");
-  renderRestSeg(); renderAlertList(); renderBgSwitch();
+  renderRestSeg(); renderAlertList(); renderAlertVol(); renderBgSwitch();
   if(PERSONAL_MESSAGE && PERSONAL_MESSAGE.trim()){
     document.getElementById("personalMsg").style.display="block";
     document.getElementById("personalMsgText").textContent=PERSONAL_MESSAGE;
