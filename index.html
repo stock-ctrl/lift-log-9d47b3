@@ -361,6 +361,22 @@ input,textarea{font-family:inherit;}
   padding:8px 15px;font-size:13px;font-weight:750;cursor:pointer;font-variant-numeric:tabular-nums;
 }
 .seg button.sel{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
+.sound-list{display:flex;flex-direction:column;gap:8px;}
+.sound-opt{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);
+  border:1.5px solid var(--line);background:var(--card);cursor:pointer;
+  transition:border-color .15s,background .15s,transform .12s var(--ease);
+}
+.sound-opt:active{transform:scale(.99);}
+.sound-opt.sel{border-color:var(--accent);background:var(--accent-wash);}
+.sound-opt .ico{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--paper-2);color:var(--ink-2);}
+.sound-opt.sel .ico{background:var(--accent);color:var(--on-accent);}
+.sound-opt .ico svg{width:15px;height:15px;}
+.sound-opt .nm{flex:1;font-size:15.5px;font-weight:700;color:var(--ink);}
+.sound-opt .desc{font-size:12.5px;font-weight:600;color:var(--muted);}
+.sound-opt .chk{color:var(--accent);opacity:0;flex-shrink:0;}
+.sound-opt.sel .chk{opacity:1;}
+.sound-opt .chk svg{width:18px;height:18px;display:block;}
 .toggle-row{display:flex;align-items:center;gap:14px;justify-content:space-between;margin:16px 2px 2px;}
 .toggle-row .tg-t{font-size:14.5px;font-weight:750;color:var(--ink);}
 .toggle-row .tg-s{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5;}
@@ -596,8 +612,7 @@ input,textarea{font-family:inherit;}
 
     <h2 class="h-sec">Rest alert</h2>
     <p class="note-txt" style="margin-top:0;">A gentle custom chime when rest is up. Tap each one to hear it. It's our own sound, not the iPhone's alarm, and it just briefly dips his music or podcast. This is the only cue that can reach him while he's in another app.</p>
-    <div class="seg" id="alertSeg"></div>
-    <button class="btn btn-outline" id="testAlertBtn" style="margin-top:10px;">Preview the chime</button>
+    <div class="sound-list" id="alertList"></div>
     <div class="toggle-row" id="bgRow">
       <div>
         <div class="tg-t">Alert me in other apps</div>
@@ -1185,14 +1200,20 @@ function renderRestSeg(){
     seg.appendChild(b);
   });
 }
-function renderAlertSeg(){
-  const seg=document.getElementById("alertSeg"); if(!seg) return; seg.innerHTML="";
-  [["soft","Soft"],["bell","Bell"],["wood","Wood"],["off","Off"]].forEach(o=>{
-    const b=document.createElement("button"); b.className=(o[0]===alertSound?"sel":""); b.textContent=o[1];
-    b.onclick=()=>{ alertSound=o[0]; localStorage.setItem(ALERT_KEY,o[0]); renderAlertSeg();
+function renderAlertList(){
+  const host=document.getElementById("alertList"); if(!host) return; host.innerHTML="";
+  const PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  const MUTE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9v6h4l5 4V5L9 9H5z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+  const CHK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+  [["soft","Soft","Warm two-note"],["bell","Bell","Gentle bell"],["wood","Wood","Quiet low tok"],["off","Off","No sound"]].forEach(o=>{
+    const row=document.createElement("div"); row.className="sound-opt"+(o[0]===alertSound?" sel":"");
+    row.innerHTML='<span class="ico">'+(o[0]==="off"?MUTE:PLAY)+'</span>'+
+      '<span class="nm">'+o[1]+'</span><span class="desc">'+o[2]+'</span><span class="chk">'+CHK+'</span>';
+    row.onclick=()=>{
+      alertSound=o[0]; localStorage.setItem(ALERT_KEY,o[0]); renderAlertList();
       if(o[0]!=="off"){ ensureAudio(); if(audioCtx) scheduleAlert(audioCtx.currentTime+0.06); }
-      toast(o[0]==="off"?"Rest alert off":"Rest alert: "+o[1]); };
-    seg.appendChild(b);
+    };
+    host.appendChild(row);
   });
 }
 function renderBgSwitch(){ const s=document.getElementById("bgSwitch"); if(s) s.classList.toggle("on",bgAlert); }
@@ -1322,7 +1343,6 @@ document.getElementById("dayName").addEventListener("keydown",e=>{ if(e.key==="E
 document.getElementById("restClose").onclick=closeRest;
 document.getElementById("restMinus").onclick=()=>adjustRest(-15);
 document.getElementById("restPlus").onclick=()=>adjustRest(15);
-document.getElementById("testAlertBtn").onclick=()=>{ ensureAudio(); if(alertSound==="off"){ toast("Rest alert is off — pick Chime or Beep"); return; } if(audioCtx) scheduleAlert(audioCtx.currentTime+0.06); };
 document.getElementById("bgSwitch").onclick=()=>{ bgAlert=!bgAlert; localStorage.setItem(BG_KEY,bgAlert?"1":"0"); renderBgSwitch(); ensureAudio();
   toast(bgAlert?"On — test it on his phone":"Off"); };
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ ensureAudio();
@@ -1343,7 +1363,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
   document.title=DAD_NAME+"'s Lifting Log";
   document.getElementById("unitLabel").textContent=unit;
   document.getElementById("unitToggle").textContent="Switch to "+(unit==="lb"?"kg":"lb");
-  renderRestSeg(); renderAlertSeg(); renderBgSwitch();
+  renderRestSeg(); renderAlertList(); renderBgSwitch();
   if(PERSONAL_MESSAGE && PERSONAL_MESSAGE.trim()){
     document.getElementById("personalMsg").style.display="block";
     document.getElementById("personalMsgText").textContent=PERSONAL_MESSAGE;
