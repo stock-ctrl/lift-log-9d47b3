@@ -595,7 +595,7 @@ input,textarea{font-family:inherit;}
     <div class="seg" id="restSeg"></div>
 
     <h2 class="h-sec">Rest alert</h2>
-    <p class="note-txt" style="margin-top:0;">A gentle custom chime when rest is up, so he hears it even during a video or podcast. It's our own sound, not the iPhone's alarm, and it just briefly dips his audio.</p>
+    <p class="note-txt" style="margin-top:0;">A gentle custom chime when rest is up. Tap each one to hear it. It's our own sound, not the iPhone's alarm, and it just briefly dips his music or podcast. This is the only cue that can reach him while he's in another app.</p>
     <div class="seg" id="alertSeg"></div>
     <button class="btn btn-outline" id="testAlertBtn" style="margin-top:10px;">Preview the chime</button>
     <div class="toggle-row" id="bgRow">
@@ -694,7 +694,8 @@ function blankDraft(){ return { exercises:[], feel:"", note:"", startedAt:null, 
 let draft = loadDraft();
 let unit = localStorage.getItem(UNIT_KEY) || "lb";
 let restTarget = parseInt(localStorage.getItem(REST_KEY),10) || 90;
-let alertSound = localStorage.getItem(ALERT_KEY) || "chime";
+let alertSound = localStorage.getItem(ALERT_KEY) || "soft";
+if(!["soft","bell","wood","off"].includes(alertSound)) alertSound="soft";
 let bgAlert    = localStorage.getItem(BG_KEY)==="1";
 let sessionPRs = {};   // exercise name (lowercased) -> best e1RM already celebrated this session
 
@@ -872,20 +873,26 @@ function ensureAudio(){
   try{ audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
     if(audioCtx.state==="suspended") audioCtx.resume(); }catch(e){}
 }
-function noteAt(freq,t,dur,peak){
+function tone(at,freq,dur,peak,type){
   const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-  o.type="sine"; o.frequency.value=freq; o.connect(g); g.connect(audioCtx.destination);
-  g.gain.setValueAtTime(0.0001,t);
-  g.gain.exponentialRampToValueAtTime(peak,t+0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  o.start(t); o.stop(t+dur+0.03); scheduledNodes.push(o);
+  o.type=type||"sine"; o.frequency.value=freq; o.connect(g); g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(0.0001,at);
+  g.gain.exponentialRampToValueAtTime(peak,at+0.025);   // soft attack, no click
+  g.gain.exponentialRampToValueAtTime(0.0001,at+dur);   // natural fade
+  o.start(at); o.stop(at+dur+0.05); scheduledNodes.push(o);
 }
 function clearScheduled(){ scheduledNodes.forEach(n=>{ try{n.stop();}catch(e){} try{n.disconnect();}catch(e){} }); scheduledNodes=[]; }
 function scheduleAlert(at){
   if(!audioCtx || alertSound==="off") return;
   clearScheduled();
-  if(alertSound==="beep"){ noteAt(880,at,0.16,0.30); noteAt(880,at+0.20,0.18,0.30); }
-  else { noteAt(659.25,at,0.16,0.26); noteAt(880,at+0.16,0.16,0.26); noteAt(1174.66,at+0.32,0.32,0.30); }
+  if(alertSound==="bell"){            // single warm bell with an inharmonic shimmer
+    tone(at,880,1.10,0.24,"sine");
+    tone(at,880*2.76,0.85,0.06,"sine");
+  } else if(alertSound==="wood"){     // quiet low "tok tok", minimal, un-musical
+    tone(at,196,0.09,0.26,"sine"); tone(at+0.14,156,0.11,0.22,"sine");
+  } else {                            // soft (default): warm rising two-note
+    tone(at,587.33,0.20,0.20,"sine"); tone(at+0.17,880,0.34,0.22,"sine");
+  }
 }
 function startKeepAlive(){
   if(!audioCtx || keepAliveSrc) return;
@@ -1180,7 +1187,7 @@ function renderRestSeg(){
 }
 function renderAlertSeg(){
   const seg=document.getElementById("alertSeg"); if(!seg) return; seg.innerHTML="";
-  [["chime","Chime"],["beep","Beep"],["off","Off"]].forEach(o=>{
+  [["soft","Soft"],["bell","Bell"],["wood","Wood"],["off","Off"]].forEach(o=>{
     const b=document.createElement("button"); b.className=(o[0]===alertSound?"sel":""); b.textContent=o[1];
     b.onclick=()=>{ alertSound=o[0]; localStorage.setItem(ALERT_KEY,o[0]); renderAlertSeg();
       if(o[0]!=="off"){ ensureAudio(); if(audioCtx) scheduleAlert(audioCtx.currentTime+0.06); }
