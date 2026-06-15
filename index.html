@@ -799,7 +799,7 @@ function renderToday(){
         if(!s.done){
           if(!num(s.weight) && w.placeholder) s.weight=w.placeholder;
           if(!num(s.reps) && r.placeholder) s.reps=r.placeholder;
-          s.done=true; ensureAudio(); startWorkoutClock(); checkPR(ex.name, s);
+          s.done=true; ensureAudio(); if(navigator.vibrate){ try{navigator.vibrate(18);}catch(e){} } startWorkoutClock(); checkPR(ex.name, s);
         } else s.done=false;
         saveDraft(); renderToday();
       };
