@@ -391,6 +391,11 @@ input,textarea{font-family:inherit;}
 .switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--card);transition:transform .2s var(--ease);box-shadow:0 1px 3px oklch(0.25 0.02 55 /.3);}
 .switch.on{background:var(--good);}
 .switch.on::after{transform:translateX(20px);}
+.code-row{display:flex;gap:8px;margin:2px 0;}
+.code-row input{flex:1;min-width:0;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:13px;color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+.code-row input:focus{outline:none;border-color:var(--accent);}
+.btn-outline-sm{background:var(--card);border:1px solid var(--line-2);color:var(--ink);border-radius:10px;padding:0 16px;font-size:14px;font-weight:750;cursor:pointer;flex-shrink:0;}
+.btn-outline-sm:active{background:var(--paper-2);}
 
 /* progressive-overload nudge */
 .overload{
@@ -639,6 +644,20 @@ input,textarea{font-family:inherit;}
     <h2 class="h-sec">Lifetime</h2>
     <p class="stat-big num" id="statLine">No workouts logged yet.</p>
 
+    <h2 class="h-sec">Cloud sync</h2>
+    <p class="note-txt" style="margin-top:0;">Saves to a private spot so his log also shows on his Mac (just open the same link there) and can feed his daily brief. Works offline and syncs when there's signal.</p>
+    <div class="toggle-row">
+      <div><div class="tg-t">Sync this device</div><div class="tg-s" id="syncStatus">…</div></div>
+      <button class="switch" id="syncSwitch" role="switch" aria-label="Cloud sync"></button>
+    </div>
+    <div id="syncDetail">
+      <p class="note-txt" style="margin:14px 2px 6px;">His private sync code. To see the same data on another device, open the link there and paste this in its settings.</p>
+      <div class="code-row"><input id="syncCode" readonly><button id="copyCode" class="btn-outline-sm">Copy</button></div>
+      <p class="note-txt" style="margin:14px 2px 6px;">Linking this device to another? Paste that device's code here.</p>
+      <div class="code-row"><input id="syncCodeIn" placeholder="Paste a sync code" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="useCode" class="btn-outline-sm">Use</button></div>
+      <button class="btn btn-ghost" id="syncNowBtn" style="margin-top:6px;">Sync now</button>
+    </div>
+
     <p style="text-align:center;font-size:12.5px;color:var(--muted);margin-top:32px;">Made with care for Dad · Happy Father's Day</p>
   </section>
 
@@ -703,6 +722,12 @@ const ROUTINES_KEY = "trever_routines_v2";
 const ALERT_KEY    = "trever_alert_v2";
 const ALERTVOL_KEY = "trever_alertvol_v2";
 const BG_KEY       = "trever_bgalert_v2";
+const TOKEN_KEY    = "trever_synctoken_v2";
+const SYNCED_KEY   = "trever_syncedat_v2";
+const SYNCON_KEY   = "trever_syncon_v2";
+const SYNC_URL     = "https://souugetwznrxjtlasdtb.supabase.co/functions/v1/lifting-sync";
+const SYNC_KEY     = "sb_publishable_fkxD7LUIQ7aWPRKEGC-yGw_W5XoZVaA";
+const SYNC_HEADERS = { "Content-Type":"application/json", "apikey":SYNC_KEY, "Authorization":"Bearer "+SYNC_KEY };
 
 const STARTER = ["Bench Press","Squat","Deadlift","Overhead Press","Barbell Row",
   "Incline Bench Press","Lat Pulldown","Pull Up","Seated Cable Row","Romanian Deadlift",
@@ -727,6 +752,7 @@ if(!["soft","bell","wood","off"].includes(alertSound)) alertSound="soft";
 let alertVol = parseFloat(localStorage.getItem(ALERTVOL_KEY)); if(isNaN(alertVol)) alertVol=0.7;
 alertVol = Math.min(1, Math.max(0, alertVol));
 let bgAlert    = localStorage.getItem(BG_KEY)==="1";
+let syncOn     = localStorage.getItem(SYNCON_KEY)!=="0";   // default on
 let sessionPRs = {};   // exercise name (lowercased) -> best e1RM already celebrated this session
 
 /* ---------- utils ---------- */
@@ -1029,7 +1055,7 @@ function finishWorkout(){
   saveWorkouts(ws);
   if(dayName){ const rts=loadRoutines(); rts[dayName.toLowerCase()]={name:dayName,exercises:exercises.map(e=>e.name)}; saveRoutines(rts); }
   draft=blankDraft(); saveDraft(); sessionPRs={}; stopWorkoutClock(); closeRest();
-  renderToday(); renderHistory(); renderRecords(); updateStats();
+  renderToday(); renderHistory(); renderRecords(); updateStats(); syncPush();
   toast("Saved. Strong work 💪"); switchTab("history");
 }
 
@@ -1074,7 +1100,7 @@ function renderHistory(){
     if(w.note){ const n=document.createElement("div"); n.className="h-note"; n.textContent="“"+w.note+"”"; det.appendChild(n); }
     const del=document.createElement("button"); del.className="h-del"; del.textContent="Delete workout";
     del.onclick=ev=>{ ev.stopPropagation(); if(confirm("Delete this workout from "+shortDate(w.date)+"?")){
-      saveWorkouts(loadWorkouts().filter(x=>x.id!==w.id)); renderHistory(); renderRecords(); updateStats(); renderToday(); toast("Deleted"); } };
+      saveWorkouts(loadWorkouts().filter(x=>x.id!==w.id)); renderHistory(); renderRecords(); updateStats(); renderToday(); queuePush(); toast("Deleted"); } };
     det.appendChild(del);
     item.appendChild(det);
 
@@ -1122,7 +1148,7 @@ function renderBodyweight(){
     const v=num(inp.value); if(!v){ inp.focus(); return; }
     const log2=loadBW().filter(e=>e.date!==todayISO());
     log2.push({date:todayISO(),weight:String(v)}); saveBW(log2);
-    inp.value=""; inp.blur(); renderBodyweight(); toast("Bodyweight logged");
+    inp.value=""; inp.blur(); renderBodyweight(); queuePush(); toast("Bodyweight logged");
   }
   btn.onclick=addBW; inp.addEventListener("keydown",e=>{ if(e.key==="Enter") addBW(); });
   lg.append(inp,btn); card.appendChild(lg);
@@ -1264,9 +1290,95 @@ function importData(file){
     if(!confirm("Restore "+inc.length+" workout(s)? This replaces what's on this device.")) return;
     saveWorkouts(inc);
     if(p && Array.isArray(p.bodyweight)) saveBW(p.bodyweight);
-    renderHistory(); renderRecords(); updateStats(); renderToday(); toast("Backup restored");
+    renderHistory(); renderRecords(); updateStats(); renderToday(); syncPush(); toast("Backup restored");
   }catch(e){ alert("That doesn't look like a valid backup file."); } };
   rd.readAsText(file);
+}
+
+/* ======================= CLOUD SYNC (Supabase) ======================= */
+function syncToken(){
+  let t=localStorage.getItem(TOKEN_KEY);
+  if(!t){ const a=new Uint8Array(18); crypto.getRandomValues(a);
+    t="ll_"+[...a].map(x=>x.toString(16).padStart(2,"0")).join(""); localStorage.setItem(TOKEN_KEY,t); }
+  return t;
+}
+/* brief-ready facts: PRs, per-lift trends, gaps, bodyweight. No streaks/gamification. */
+function computeSummary(){
+  const ws=loadWorkouts().slice().sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+  const today=todayISO();
+  const dBetween=(a,b)=>Math.round((mkDate(b)-mkDate(a))/86400000);
+  const lifts={};
+  ws.forEach(w=>w.exercises.forEach(e=>{
+    let bestE=0,bestSet=null;
+    e.sets.forEach(s=>{ const v=epley(s.weight,s.reps); if(v>bestE){ bestE=v; bestSet={weight:num(s.weight),reps:num(s.reps)}; } });
+    if(bestE>0){ const k=e.name.trim(); (lifts[k]=lifts[k]||[]).push({date:w.date,e1:bestE,set:bestSet}); }
+  }));
+  const prs=[],trends=[],stale=[];
+  Object.keys(lifts).forEach(k=>{
+    const arr=lifts[k], last=arr[arr.length-1], allBest=Math.max(...arr.map(x=>x.e1));
+    if(last.e1>=allBest && dBetween(last.date,today)<=14)
+      prs.push({lift:k,weight:last.set.weight,reps:last.set.reps,e1rm:last.e1,date:last.date});
+    if(arr.length>=2){ const prev=arr[arr.length-2], diff=last.e1-prev.e1;
+      trends.push({lift:k,dir:diff>1?"up":(diff<-1?"down":"flat"),fromE1rm:prev.e1,toE1rm:last.e1,date:last.date}); }
+    const since=dBetween(last.date,today); if(since>=14) stale.push({lift:k,daysSince:since});
+  });
+  const bw=loadBW().slice().sort((a,b)=>a.date.localeCompare(b.date));
+  let bodyweight=null;
+  if(bw.length){ const latest=bw[bw.length-1]; let ref=bw[0];
+    for(const e of bw){ if(dBetween(e.date,today)<=30){ ref=e; break; } }
+    bodyweight={latest:num(latest.weight),date:latest.date,change30d:Math.round((num(latest.weight)-num(ref.weight))*10)/10,unit}; }
+  const lastW=ws[ws.length-1];
+  return {
+    unit, generatedFor:today,
+    lastWorkout: lastW?{date:lastW.date,name:lastW.name||null,daysSince:dBetween(lastW.date,today)}:null,
+    workoutsLast7Days: ws.filter(w=>dBetween(w.date,today)<=7).length,
+    recentPRs: prs.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6),
+    trends: trends.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8),
+    needsAttention: stale.sort((a,b)=>b.daysSince-a.daysSince).slice(0,5),
+    bodyweight, totals:{workouts:ws.length}
+  };
+}
+let syncTimer=null;
+async function syncPush(){
+  if(!syncOn) return;
+  try{
+    const body={token:syncToken(),action:"push",athlete:DAD_NAME,
+      data:{workouts:loadWorkouts(),bodyweight:loadBW(),unit,restTarget},summary:computeSummary()};
+    const r=await fetch(SYNC_URL,{method:"POST",headers:SYNC_HEADERS,body:JSON.stringify(body)});
+    const j=await r.json();
+    if(j && j.ok){ localStorage.setItem(SYNCED_KEY,j.updated_at); renderSync(); }
+  }catch(e){ /* offline — will sync on the next change */ }
+}
+function queuePush(){ if(!syncOn) return; clearTimeout(syncTimer); syncTimer=setTimeout(syncPush,1500); }
+async function syncPull(){
+  if(!syncOn) return;
+  try{
+    const r=await fetch(SYNC_URL,{method:"POST",headers:SYNC_HEADERS,body:JSON.stringify({token:syncToken(),action:"pull"})});
+    const j=await r.json();
+    if(j && j.ok && j.found && j.row && j.row.data){
+      const remoteAt=j.row.updated_at||"", localAt=localStorage.getItem(SYNCED_KEY)||"";
+      if(remoteAt>localAt){
+        const d=j.row.data;
+        if(Array.isArray(d.workouts)) saveWorkouts(d.workouts);
+        if(Array.isArray(d.bodyweight)) saveBW(d.bodyweight);
+        if(d.unit){ unit=d.unit; localStorage.setItem(UNIT_KEY,unit); }
+        localStorage.setItem(SYNCED_KEY,remoteAt);
+        renderHistory(); renderRecords(); updateStats(); renderToday();
+      }
+    }
+    renderSync();
+  }catch(e){}
+}
+function renderSync(){
+  const sw=document.getElementById("syncSwitch"); if(sw) sw.classList.toggle("on",syncOn);
+  const det=document.getElementById("syncDetail"); if(det) det.style.display=syncOn?"block":"none";
+  const code=document.getElementById("syncCode"); if(code) code.value=syncToken();
+  const st=document.getElementById("syncStatus");
+  if(st){
+    if(!syncOn){ st.textContent="Off — staying on this device only."; }
+    else { const a=localStorage.getItem(SYNCED_KEY);
+      st.textContent=a?("Last synced "+new Date(a).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})):"On — will sync when you log."; }
+  }
 }
 
 /* ======================= EXERCISE PICKER SHEET ======================= */
@@ -1383,6 +1495,24 @@ document.getElementById("alertVol").addEventListener("input",e=>{
 document.getElementById("alertVol").addEventListener("change",()=>{
   if(alertSound!=="off"){ ensureAudio(); if(audioCtx) scheduleAlert(audioCtx.currentTime+0.06); }
 });
+document.getElementById("syncSwitch").onclick=()=>{
+  syncOn=!syncOn; localStorage.setItem(SYNCON_KEY,syncOn?"1":"0"); renderSync();
+  if(syncOn){ syncToken(); syncPull(); syncPush(); }
+  toast(syncOn?"Cloud sync on":"Cloud sync off");
+};
+document.getElementById("copyCode").onclick=()=>{ const v=syncToken();
+  if(navigator.clipboard){ navigator.clipboard.writeText(v).then(()=>toast("Sync code copied")).catch(()=>toast(v)); } else toast(v); };
+document.getElementById("useCode").onclick=()=>{
+  const v=document.getElementById("syncCodeIn").value.trim();
+  if(v.length<16){ toast("That code looks too short"); return; }
+  localStorage.setItem(TOKEN_KEY,v); localStorage.removeItem(SYNCED_KEY);
+  document.getElementById("syncCodeIn").value=""; renderSync();
+  syncPull().then(()=>toast("Linked — pulling that data"));
+};
+document.getElementById("syncNowBtn").onclick=async ()=>{
+  if(!syncOn){ toast("Turn sync on first"); return; }
+  await syncPull(); await syncPush(); toast("Synced");
+};
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ ensureAudio();
   if(document.getElementById("rest").classList.contains("show")) tickRest(); tickClock(); } });
 document.getElementById("exportBtn").onclick=exportData;
@@ -1401,7 +1531,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
   document.title=DAD_NAME+"'s Lifting Log";
   document.getElementById("unitLabel").textContent=unit;
   document.getElementById("unitToggle").textContent="Switch to "+(unit==="lb"?"kg":"lb");
-  renderRestSeg(); renderAlertList(); renderAlertVol(); renderBgSwitch();
+  renderRestSeg(); renderAlertList(); renderAlertVol(); renderBgSwitch(); renderSync();
   if(PERSONAL_MESSAGE && PERSONAL_MESSAGE.trim()){
     document.getElementById("personalMsg").style.display="block";
     document.getElementById("personalMsgText").textContent=PERSONAL_MESSAGE;
@@ -1411,6 +1541,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
 })();
 
 renderToday(); renderHistory(); renderRecords(); updateStats();
+syncPull();
 </script>
 </body>
 </html>
