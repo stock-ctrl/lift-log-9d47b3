@@ -166,7 +166,7 @@ input,textarea{font-family:inherit;}
 /* set table */
 .set-grid{padding:0 12px 6px;}
 .set-hd,.set-row{
-  display:grid;grid-template-columns:30px 1fr 70px 64px 42px;
+  display:grid;grid-template-columns:28px 1fr 58px 52px 84px;
   align-items:center;gap:6px;
 }
 .set-hd{padding:4px 2px 8px;}
@@ -199,12 +199,22 @@ input,textarea{font-family:inherit;}
 .cell:focus{outline:none;border-color:var(--accent);background:var(--card);}
 .set-row.done .cell{background:transparent;color:var(--ink-2);}
 .check{
-  width:40px;height:40px;border-radius:11px;border:1.5px solid var(--line-2);
+  width:38px;height:40px;border-radius:11px;border:1.5px solid var(--line-2);
   background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;
   color:var(--faint);transition:transform .18s var(--ease),background .18s,border-color .18s,color .18s;
 }
 .check svg{width:20px;height:20px;}
 .check:active{transform:scale(.88);}
+.set-act{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.rest-btn{
+  width:38px;height:40px;border-radius:11px;border:1.5px solid var(--line-2);
+  background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);transition:transform .18s var(--ease),background .18s,border-color .18s,color .18s;
+}
+.rest-btn svg{width:19px;height:19px;}
+.rest-btn:active{transform:scale(.88);background:var(--accent-wash);border-color:var(--accent);color:var(--accent);}
+.act-h{display:flex;justify-content:space-between;gap:8px;}
+.act-h i{font-style:normal;flex:1;text-align:center;}
 .set-row.done .check{background:var(--good);border-color:var(--good);color:var(--on-accent);}
 .set-row.done .check{animation:pop .28s var(--ease);}
 @keyframes pop{0%{transform:scale(.7)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
@@ -479,8 +489,9 @@ input,textarea{font-family:inherit;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 @media (max-width:360px){
-  .set-hd,.set-row{grid-template-columns:26px 1fr 62px 56px 40px;gap:5px;}
+  .set-hd,.set-row{grid-template-columns:26px 1fr 52px 46px 80px;gap:5px;}
   .cell{font-size:17px;}
+  .check,.rest-btn{width:36px;}
   .rest .adj{min-width:40px;}
 }
 </style>
@@ -765,7 +776,7 @@ function renderToday(){
 
     const grid=document.createElement("div"); grid.className="set-grid";
     const hd=document.createElement("div"); hd.className="set-hd";
-    hd.innerHTML="<span>Set</span><span>Previous</span><span>"+unit+"</span><span>Reps</span><span>Done</span>";
+    hd.innerHTML="<span>Set</span><span>Previous</span><span>"+unit+"</span><span>Reps</span><span class='act-h'><i>Done</i><i>Rest</i></span>";
     grid.appendChild(hd);
 
     ex.sets.forEach((s,si)=>{
@@ -788,12 +799,16 @@ function renderToday(){
         if(!s.done){
           if(!num(s.weight) && w.placeholder) s.weight=w.placeholder;
           if(!num(s.reps) && r.placeholder) s.reps=r.placeholder;
-          s.done=true; ensureAudio(); startWorkoutClock(); startRest();
-          checkPR(ex.name, s);
+          s.done=true; ensureAudio(); startWorkoutClock(); checkPR(ex.name, s);
         } else s.done=false;
         saveDraft(); renderToday();
       };
-      row.append(idx,p,w,r,ck); grid.appendChild(row);
+      // separate, optional rest button — he taps it only when he wants the timer
+      const rb=document.createElement("button"); rb.className="rest-btn"; rb.setAttribute("aria-label","Start rest timer");
+      rb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5h6"/><path d="M12 2.5v2"/><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.5"/></svg>';
+      rb.onclick=()=>{ ensureAudio(); startWorkoutClock(); startRest(); };
+      const act=document.createElement("div"); act.className="set-act"; act.append(ck,rb);
+      row.append(idx,p,w,r,act); grid.appendChild(row);
     });
 
     const foot=document.createElement("div"); foot.className="set-foot";
