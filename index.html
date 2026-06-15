@@ -608,7 +608,7 @@ input,textarea{font-family:inherit;}
 
   <!-- ===================== MORE ===================== -->
   <section class="view" id="view-settings">
-    <p class="note-txt" style="margin-top:8px;">Everything saves right on this device. No account, no internet needed. Back up now and then so you never lose your progress.</p>
+    <p class="note-txt" style="margin-top:8px;">Everything saves right on this device. No account, no internet needed. Tap Back up to save a copy, on his iPhone you can save it to iCloud Drive or AirDrop it to a Mac, so it shows up there too.</p>
     <button class="btn btn-outline" id="exportBtn">Back up my workouts</button>
     <button class="btn btn-outline" id="importBtn" style="margin-top:9px;">Restore from a backup</button>
     <input type="file" id="importFile" accept="application/json" style="display:none;">
@@ -1240,11 +1240,20 @@ function renderAlertVol(){
   el.style.background="linear-gradient(90deg, var(--accent) "+pct+"%, var(--line-2) "+pct+"%)";
   document.getElementById("alertVolVal").textContent=pct+"%";
 }
-function exportData(){
+async function exportData(){
   const data=JSON.stringify({app:"trever-lifting-log",version:2,unit,restTarget,exportedFrom:DAD_NAME,
     workouts:loadWorkouts(),bodyweight:loadBW()},null,2);
+  const fname="lifting-backup-"+todayISO()+".json";
+  // On iPhone, the share sheet lets him Save to Files -> iCloud Drive, or AirDrop it to a Mac.
+  try{
+    const file=new File([data],fname,{type:"application/json"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:"Lifting Log backup"});
+      toast("Backup shared"); return;
+    }
+  }catch(e){ if(e && e.name==="AbortError") return; /* otherwise fall through to download */ }
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));
-  a.download="lifting-backup-"+todayISO()+".json"; document.body.appendChild(a); a.click(); a.remove();
+  a.download=fname; document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(a.href); toast("Backup saved to your files");
 }
 function importData(file){
