@@ -100,7 +100,7 @@ input,textarea{font-family:inherit;}
   display:none;align-items:center;gap:7px;
   font-weight:700;font-size:15px;letter-spacing:.02em;color:var(--ink);
 }
-.clock.on{display:inline-flex;}
+.clock.on{display:inline-flex;cursor:pointer;}
 .clock .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);
   animation:pulse 1.6s var(--ease) infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -914,6 +914,7 @@ function startWorkoutClock(){
 function tickClock(){
   if(!draft.startedAt) return;
   const sec=Math.floor((Date.now()-draft.startedAt)/1000);
+  if(sec>5*3600){ draft.startedAt=null; saveDraft(); stopWorkoutClock(); return; }  // never run past 5h
   document.getElementById("clockTime").textContent=fmtClock(sec);
 }
 function stopWorkoutClock(){ if(clockInt){ clearInterval(clockInt); clockInt=null; } document.getElementById("clock").classList.remove("on"); }
@@ -1466,6 +1467,10 @@ function switchTab(tab){
 
 /* ======================= WIRE UP ======================= */
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+document.getElementById("clock").onclick=()=>{
+  if(!draft.startedAt) return;
+  if(confirm("Reset the workout timer? Your logged sets stay.")){ draft.startedAt=null; saveDraft(); stopWorkoutClock(); }
+};
 document.getElementById("addExerciseBtn").onclick=openSheet;
 document.getElementById("scrim").onclick=closeSheet;
 document.getElementById("exSearch").addEventListener("input",e=>renderSheet(e.target.value));
@@ -1537,7 +1542,11 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
     document.getElementById("personalMsgText").textContent=PERSONAL_MESSAGE;
     document.getElementById("personalFrom").textContent=PERSONAL_FROM;
   }
-  if(draft.startedAt){ startWorkoutClock(); }
+  if(draft.startedAt){
+    const hrs=(Date.now()-draft.startedAt)/3600000;
+    if(hrs<5 && draft.exercises.length){ startWorkoutClock(); }
+    else { draft.startedAt=null; saveDraft(); }   // stale/forgotten session: don't run the clock
+  }
 })();
 
 renderToday(); renderHistory(); renderRecords(); updateStats();
