@@ -176,6 +176,16 @@ input,textarea{font-family:inherit;}
 .exd-chev{flex-shrink:0;color:var(--faint);display:flex;align-items:center;}
 .exd-chev svg{width:18px;height:18px;}
 
+/* unfinished (unsaved) session banner */
+.resume{background:var(--accent-wash);border:1px solid color-mix(in oklch,var(--accent) 32%,transparent);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:14px;}
+.resume-t{font-size:15px;font-weight:800;color:var(--ink);}
+.resume-s{font-size:13px;color:var(--ink-2);margin-top:3px;line-height:1.45;}
+.resume-btns{display:flex;gap:8px;margin-top:11px;}
+.resume-save{flex:1;background:var(--accent);color:var(--on-accent);border:none;border-radius:11px;padding:11px;font-size:14px;font-weight:750;cursor:pointer;}
+.resume-save:active{background:var(--accent-2);}
+.resume-disc{flex-shrink:0;background:none;border:1px solid var(--line-2);color:var(--ink-2);border-radius:11px;padding:11px 16px;font-size:14px;font-weight:750;cursor:pointer;}
+.resume-disc:active{background:var(--card);}
+
 /* set table */
 .set-grid{padding:0 12px 6px;}
 .set-hd,.set-row{
@@ -810,6 +820,18 @@ function renderToday(){
   const has=draft.exercises.length>0;
   document.getElementById("todayEmpty").style.display=has?"none":"block";
   document.getElementById("summary").style.display=has?"grid":"none";
+
+  // unfinished session from a previous visit (logged work, but the timer has idled off)
+  const hasWork = draft.exercises.some(e=>e.sets.some(s=>s.done || num(s.weight) || num(s.reps)));
+  if(hasWork && !draft.startedAt){
+    const banner=document.createElement("div"); banner.className="resume";
+    banner.innerHTML='<div class="resume-t">Unfinished workout</div>'+
+      '<div class="resume-s">You logged sets but didn’t save yet. Finish to log it, or discard to clear.</div>'+
+      '<div class="resume-btns"><button class="resume-save">Finish &amp; save</button><button class="resume-disc">Discard</button></div>';
+    banner.querySelector(".resume-save").onclick=finishWorkout;
+    banner.querySelector(".resume-disc").onclick=()=>{ if(confirm("Discard this unfinished workout?")){ draft=blankDraft(); saveDraft(); sessionPRs={}; closeRest(); renderToday(); toast("Cleared"); } };
+    list.appendChild(banner);
+  }
 
   draft.exercises.forEach((ex,ei)=>{
     const prev=prevFor(ex.name);
