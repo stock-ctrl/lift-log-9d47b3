@@ -1592,8 +1592,9 @@ document.getElementById("syncNowBtn").onclick=async ()=>{
   await syncPull(); await syncPush(); toast("Synced");
 };
 document.getElementById("reloadBtn").onclick=()=>{
+  saveDraft();   // flush the in-progress workout first (data lives in localStorage, survives the reload)
   toast("Updating…");
-  setTimeout(()=>location.replace(location.pathname+"?v="+Date.now()),250);  // cache-busting fresh fetch
+  setTimeout(()=>location.replace(location.pathname+"?v="+Date.now()),250);  // cache-busting fresh fetch, same origin = same data
 };
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ ensureAudio();
   if(document.getElementById("rest").classList.contains("show")) tickRest(); tickClock(); } });
