@@ -76,6 +76,7 @@ body{
   padding-bottom:calc(var(--tab-safe) + 8px);
   overscroll-behavior-y:none;
 }
+body.kb-open{padding-bottom:55vh;}   /* room to scroll a focused field above the keyboard */
 .num{font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1;}
 .wrap{max-width:560px;margin:0 auto;padding:0 18px;}
 button{font-family:inherit;}
@@ -485,7 +486,7 @@ input,textarea{font-family:inherit;}
   position:fixed;left:0;right:0;bottom:0;z-index:41;
   background:var(--paper);border-radius:22px 22px 0 0;
   max-width:560px;margin:0 auto;max-height:82vh;display:flex;flex-direction:column;
-  transform:translateY(100%);transition:transform .34s var(--ease);
+  transform:translateY(100%);transition:transform .34s var(--ease),bottom .25s var(--ease);
   padding-bottom:env(safe-area-inset-bottom);
   box-shadow:0 -10px 40px oklch(0.25 0.02 55 / .18);
 }
@@ -740,7 +741,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.20";
+const APP_VERSION = "2026.06.20b";
 
 const LS_KEY    = "trever_lifting_v2";
 const DRAFT_KEY = "trever_draft_v2";
@@ -1464,7 +1465,7 @@ function openSheet(){
 }
 function closeSheet(){
   document.getElementById("scrim").classList.remove("show");
-  document.getElementById("sheet").classList.remove("show");
+  const sh=document.getElementById("sheet"); sh.classList.remove("show"); sh.style.bottom="";
   document.getElementById("exSearch").blur();
 }
 function renderSheet(q){
@@ -1602,17 +1603,31 @@ document.getElementById("reloadBtn").onclick=()=>{
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ ensureAudio();
   if(document.getElementById("rest").classList.contains("show")) tickRest(); tickClock(); } });
 
-/* keep the focused text field above the on-screen keyboard so he can see what he types */
-function adjustForKeyboard(el){
-  const vv=window.visualViewport; if(!vv||!el) return;
-  const r=el.getBoundingClientRect(); const m=24;
-  if(r.bottom>vv.height-m){ window.scrollBy({top:r.bottom-(vv.height-m),left:0,behavior:"smooth"}); }
+/* keep the focused text field visible above the on-screen keyboard */
+function isField(el){ return el && (el.tagName==="INPUT"||el.tagName==="TEXTAREA"); }
+function kbHeight(){ const vv=window.visualViewport; return vv ? Math.max(0, window.innerHeight-(vv.height+vv.offsetTop)) : 0; }
+function positionSheet(){           // lift the exercise-picker sheet above the keyboard
+  const s=document.getElementById("sheet"); if(!s) return;
+  s.style.bottom = (s.classList.contains("show") ? kbHeight() : 0) + "px";
 }
-document.addEventListener("focusin",e=>{ const el=e.target;
-  if(el&&(el.tagName==="INPUT"||el.tagName==="TEXTAREA")) setTimeout(()=>adjustForKeyboard(el),300);
+function adjustForKeyboard(el){      // scroll an in-page field up above the keyboard
+  const vv=window.visualViewport; if(!vv||!el) return;
+  const r=el.getBoundingClientRect();
+  const over = r.bottom - (vv.height + vv.offsetTop) + 24;
+  if(over>0) window.scrollBy({top:over,left:0,behavior:"smooth"});
+}
+document.addEventListener("focusin",e=>{
+  if(!isField(e.target)) return;
+  document.body.classList.add("kb-open");        // adds scroll room so bottom fields can rise
+  setTimeout(()=>{ positionSheet(); adjustForKeyboard(e.target); },300);
 });
-if(window.visualViewport){ window.visualViewport.addEventListener("resize",()=>{ const el=document.activeElement;
-  if(el&&(el.tagName==="INPUT"||el.tagName==="TEXTAREA")) adjustForKeyboard(el); }); }
+document.addEventListener("focusout",e=>{
+  if(!isField(e.target)) return;
+  setTimeout(()=>{ if(!isField(document.activeElement)){ document.body.classList.remove("kb-open"); positionSheet(); } },150);
+});
+if(window.visualViewport){
+  window.visualViewport.addEventListener("resize",()=>{ positionSheet(); if(isField(document.activeElement)) adjustForKeyboard(document.activeElement); });
+}
 document.getElementById("exportBtn").onclick=exportData;
 document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
 document.getElementById("importFile").onchange=e=>{ if(e.target.files[0]) importData(e.target.files[0]); };
