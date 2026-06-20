@@ -676,8 +676,8 @@ input,textarea{font-family:inherit;}
     <div id="syncDetail">
       <p class="note-txt" style="margin:14px 2px 6px;">His private sync code. To see the same data on another device, open the link there and paste this in its settings.</p>
       <div class="code-row"><input id="syncCode" readonly><button id="copyCode" class="btn-outline-sm">Copy</button></div>
-      <p class="note-txt" style="margin:14px 2px 6px;">Linking this device to another? Paste that device's code here.</p>
-      <div class="code-row"><input id="syncCodeIn" placeholder="Paste a sync code" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="useCode" class="btn-outline-sm">Use</button></div>
+      <p class="note-txt" style="margin:14px 2px 6px;">Recovering on a new phone, or want a code you'll remember? Type one here (16+ characters) and tap Use. Re-enter the same code after a reinstall and everything comes back.</p>
+      <div class="code-row"><input id="syncCodeIn" placeholder="Type or paste a sync code" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="useCode" class="btn-outline-sm">Use</button></div>
       <button class="btn btn-ghost" id="syncNowBtn" style="margin-top:6px;">Sync now</button>
     </div>
 
@@ -740,7 +740,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.19";
+const APP_VERSION = "2026.06.19b";
 
 const LS_KEY    = "trever_lifting_v2";
 const DRAFT_KEY = "trever_draft_v2";
@@ -1580,12 +1580,15 @@ document.getElementById("syncSwitch").onclick=()=>{
 };
 document.getElementById("copyCode").onclick=()=>{ const v=syncToken();
   if(navigator.clipboard){ navigator.clipboard.writeText(v).then(()=>toast("Sync code copied")).catch(()=>toast(v)); } else toast(v); };
-document.getElementById("useCode").onclick=()=>{
+document.getElementById("useCode").onclick=async ()=>{
   const v=document.getElementById("syncCodeIn").value.trim();
-  if(v.length<16){ toast("That code looks too short"); return; }
+  if(v.length<16){ toast("Use a code with 16+ characters"); return; }
+  if(!syncOn){ syncOn=true; localStorage.setItem(SYNCON_KEY,"1"); }
   localStorage.setItem(TOKEN_KEY,v); localStorage.removeItem(SYNCED_KEY);
   document.getElementById("syncCodeIn").value=""; renderSync();
-  syncPull().then(()=>toast("Linked — pulling that data"));
+  await syncPull();   // pull any data already saved under this code
+  await syncPush();   // and save this device's data under it too, so it's safe immediately
+  toast("Synced to your code");
 };
 document.getElementById("syncNowBtn").onclick=async ()=>{
   if(!syncOn){ toast("Turn sync on first"); return; }
