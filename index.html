@@ -753,7 +753,10 @@ const PERSONAL_MESSAGE = "Happy Father's Day, Pops. I built this tool to weave i
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.21d";
+const APP_VERSION = "2026.06.21e";
+/* Trevor's profile — saved for the daily brief's age-aware tone and a future
+   "strength for his age" feature. Not shown in the app yet. */
+const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
 
 const LS_KEY    = "trever_lifting_v2";
 const DRAFT_KEY = "trever_draft_v2";
@@ -1463,7 +1466,8 @@ function computeSummary(){
     recentPRs: prs.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6),
     trends: trends.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8),
     needsAttention: stale.sort((a,b)=>b.daysSince-a.daysSince).slice(0,5),
-    bodyweight, totals:{workouts:ws.length}
+    bodyweight, totals:{workouts:ws.length},
+    profile: PROFILE
   };
 }
 let syncTimer=null;
