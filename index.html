@@ -540,6 +540,18 @@ input,textarea{font-family:inherit;}
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
+/* auto-update button (appears when a newer version is live) */
+.update-fab{
+  position:fixed;right:16px;bottom:calc(var(--tab-safe) + 14px);z-index:46;
+  display:none;align-items:center;gap:7px;
+  background:var(--good);color:var(--on-accent);border:none;border-radius:24px;
+  padding:11px 16px;font-size:14px;font-weight:800;cursor:pointer;
+  box-shadow:0 8px 24px oklch(0.56 0.105 155 / .45);animation:fabpop .45s var(--ease);
+}
+.update-fab.show{display:inline-flex;}
+.update-fab svg{width:17px;height:17px;}
+@keyframes fabpop{0%{opacity:0;transform:translateY(14px) scale(.9)}100%{opacity:1;transform:none}}
+
 @media (max-width:360px){
   .set-hd,.set-row{grid-template-columns:26px 1fr 52px 46px 80px;gap:5px;}
   .cell{font-size:17px;}
@@ -728,6 +740,7 @@ input,textarea{font-family:inherit;}
 
 <div id="confetti"></div>
 <div class="prbanner" id="prbanner"><div class="pb-t">New PR! 🎉</div><div class="pb-s" id="prbannerText"></div></div>
+<button class="update-fab" id="updateFab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.85-3.36L23 10M1 14l4.65 4.36A9 9 0 0020.5 15"/></svg> Update</button>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -736,11 +749,11 @@ input,textarea{font-family:inherit;}
    PERSONAL_MESSAGE: your note to Dad. Leave "" to hide the note card.
    PERSONAL_FROM:   the little label above it (e.g. "From Stock").
    ========================================================================== */
-const PERSONAL_MESSAGE = "Happy Father's Day, Pops. I built this tool to weave into your daily life. It'll show up in your daily briefs and your weekly syncs. And the best part: if you ever want anything changed or added, I can do it in a split second. Thanks for being the best example of a father to me.";
+const PERSONAL_MESSAGE = "Happy Father's Day, Pops. I built this tool to weave into your daily life. It'll show up in your daily briefs and your weekly syncs, and best of all, if you ever want anything changed or added, I can do it in a split second. Thanks for being the best example of a father to me.";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.21c";
+const APP_VERSION = "2026.06.21d";
 
 const LS_KEY    = "trever_lifting_v2";
 const DRAFT_KEY = "trever_draft_v2";
@@ -763,13 +776,54 @@ const STARTER = ["Bench Press","Squat","Deadlift","Overhead Press","Barbell Row"
   "Leg Press","Leg Curl","Leg Extension","Dumbbell Shoulder Press","Dumbbell Curl",
   "Hammer Curl","Tricep Pushdown","Lateral Raise","Chest Fly","Calf Raise","Face Pull","Plank"];
 
+/* ---------- demo preview: open the app with ?demo=1 to browse sample History/Progress.
+   It never persists to this device and never syncs to the cloud. The real app (no ?demo) is untouched. ---------- */
+const DEMO = location.search.indexOf("demo=1")>=0;
+const DEMO_WORKOUTS = [
+  {id:"d1",date:"2026-06-02",name:"Push",feel:"Solid",note:"",durationSec:3360,unit:"lb",exercises:[
+    {name:"Bench Press",sets:[{weight:135,reps:10},{weight:155,reps:8},{weight:175,reps:6}]},
+    {name:"Overhead Press",sets:[{weight:95,reps:8},{weight:95,reps:7},{weight:95,reps:6}]},
+    {name:"Incline Dumbbell Press",sets:[{weight:50,reps:10},{weight:50,reps:9},{weight:50,reps:8}]},
+    {name:"Tricep Pushdown",sets:[{weight:50,reps:12},{weight:50,reps:11},{weight:50,reps:10}]}]},
+  {id:"d2",date:"2026-06-05",name:"Pull",feel:"Strong",note:"Back felt strong today",durationSec:3540,unit:"lb",exercises:[
+    {name:"Deadlift",sets:[{weight:225,reps:5},{weight:275,reps:3},{weight:315,reps:2}]},
+    {name:"Barbell Row",sets:[{weight:135,reps:8},{weight:135,reps:8},{weight:135,reps:7}]},
+    {name:"Lat Pulldown",sets:[{weight:120,reps:10},{weight:120,reps:9},{weight:120,reps:8}]},
+    {name:"Dumbbell Curl",sets:[{weight:30,reps:10},{weight:30,reps:9},{weight:30,reps:8}]}]},
+  {id:"d3",date:"2026-06-08",name:"Legs",feel:"Tired",note:"Knee a little tight",durationSec:3180,unit:"lb",exercises:[
+    {name:"Squat",sets:[{weight:185,reps:8},{weight:205,reps:6},{weight:225,reps:4}]},
+    {name:"Leg Press",sets:[{weight:270,reps:10},{weight:270,reps:10},{weight:270,reps:9}]},
+    {name:"Leg Curl",sets:[{weight:90,reps:12},{weight:90,reps:11},{weight:90,reps:10}]},
+    {name:"Calf Raise",sets:[{weight:180,reps:15},{weight:180,reps:14},{weight:180,reps:13}]}]},
+  {id:"d4",date:"2026-06-10",name:"Push",feel:"Solid",note:"",durationSec:3300,unit:"lb",exercises:[
+    {name:"Bench Press",sets:[{weight:145,reps:10},{weight:165,reps:8},{weight:185,reps:5}]},
+    {name:"Overhead Press",sets:[{weight:100,reps:7},{weight:100,reps:6},{weight:100,reps:6}]},
+    {name:"Incline Dumbbell Press",sets:[{weight:55,reps:9},{weight:55,reps:8},{weight:55,reps:8}]}]},
+  {id:"d5",date:"2026-06-13",name:"Pull",feel:"Strong",note:"",durationSec:3480,unit:"lb",exercises:[
+    {name:"Deadlift",sets:[{weight:245,reps:5},{weight:285,reps:3},{weight:325,reps:2}]},
+    {name:"Barbell Row",sets:[{weight:145,reps:8},{weight:145,reps:7},{weight:145,reps:7}]},
+    {name:"Lat Pulldown",sets:[{weight:130,reps:9},{weight:130,reps:9},{weight:130,reps:8}]}]},
+  {id:"d6",date:"2026-06-16",name:"Legs",feel:"Solid",note:"",durationSec:3240,unit:"lb",exercises:[
+    {name:"Squat",sets:[{weight:195,reps:8},{weight:215,reps:6},{weight:235,reps:4}]},
+    {name:"Leg Press",sets:[{weight:290,reps:10},{weight:290,reps:9},{weight:290,reps:9}]},
+    {name:"Leg Curl",sets:[{weight:100,reps:11},{weight:100,reps:10},{weight:100,reps:10}]}]},
+  {id:"d7",date:"2026-06-19",name:"Push",feel:"Strong",note:"Bench felt great, new PR",durationSec:3420,unit:"lb",exercises:[
+    {name:"Bench Press",sets:[{weight:155,reps:8},{weight:175,reps:6},{weight:195,reps:4}]},
+    {name:"Overhead Press",sets:[{weight:105,reps:6},{weight:105,reps:6},{weight:105,reps:5}]},
+    {name:"Incline Dumbbell Press",sets:[{weight:60,reps:8},{weight:60,reps:8},{weight:60,reps:7}]}]}
+];
+const DEMO_BW = [
+  {date:"2026-05-25",weight:198},{date:"2026-06-01",weight:197.5},{date:"2026-06-08",weight:196},
+  {date:"2026-06-15",weight:195},{date:"2026-06-19",weight:194.5}
+];
+
 /* ---------- storage ---------- */
-const loadWorkouts = () => { try{ return JSON.parse(localStorage.getItem(LS_KEY))||[]; }catch(e){ return []; } };
-const saveWorkouts = w => localStorage.setItem(LS_KEY, JSON.stringify(w));
-const loadDraft = () => { try{ return JSON.parse(localStorage.getItem(DRAFT_KEY))||blankDraft(); }catch(e){ return blankDraft(); } };
-const saveDraft = () => localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-const loadBW = () => { try{ return JSON.parse(localStorage.getItem(BW_KEY))||[]; }catch(e){ return []; } };
-const saveBW = a => localStorage.setItem(BW_KEY, JSON.stringify(a));
+const loadWorkouts = () => { if(DEMO) return DEMO_WORKOUTS.slice(); try{ return JSON.parse(localStorage.getItem(LS_KEY))||[]; }catch(e){ return []; } };
+const saveWorkouts = w => { if(DEMO) return; localStorage.setItem(LS_KEY, JSON.stringify(w)); };
+const loadDraft = () => { if(DEMO) return blankDraft(); try{ return JSON.parse(localStorage.getItem(DRAFT_KEY))||blankDraft(); }catch(e){ return blankDraft(); } };
+const saveDraft = () => { if(DEMO) return; localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); };
+const loadBW = () => { if(DEMO) return DEMO_BW.slice(); try{ return JSON.parse(localStorage.getItem(BW_KEY))||[]; }catch(e){ return []; } };
+const saveBW = a => { if(DEMO) return; localStorage.setItem(BW_KEY, JSON.stringify(a)); };
 const loadRoutines = () => { try{ return JSON.parse(localStorage.getItem(ROUTINES_KEY))||{}; }catch(e){ return {}; } };
 const saveRoutines = o => localStorage.setItem(ROUTINES_KEY, JSON.stringify(o));
 function blankDraft(){ return { exercises:[], feel:"", note:"", startedAt:null, lastInput:null, name:"" }; }
@@ -781,7 +835,7 @@ if(!["soft","bell","wood","off"].includes(alertSound)) alertSound="soft";
 let alertVol = parseFloat(localStorage.getItem(ALERTVOL_KEY)); if(isNaN(alertVol)) alertVol=0.7;
 alertVol = Math.min(1, Math.max(0, alertVol));
 let bgAlert    = localStorage.getItem(BG_KEY)==="1";
-let syncOn     = localStorage.getItem(SYNCON_KEY)!=="0";   // default on
+let syncOn     = !DEMO && localStorage.getItem(SYNCON_KEY)!=="0";   // default on; never in demo
 let sessionPRs = {};   // exercise name (lowercased) -> best e1RM already celebrated this session
 
 /* ---------- utils ---------- */
@@ -1443,6 +1497,18 @@ async function syncPull(){
     renderSync();
   }catch(e){}
 }
+/* check the live site's APP_VERSION; if newer, surface the green Update button */
+function showUpdate(){ const f=document.getElementById("updateFab"); if(f) f.classList.add("show"); }
+async function checkForUpdate(){
+  if(DEMO) return;
+  try{
+    const r=await fetch(location.pathname+"?_="+Date.now(),{cache:"no-store"});
+    if(!r.ok) return;
+    const t=await r.text();
+    const m=t.match(/APP_VERSION\s*=\s*"([^"]+)"/);
+    if(m && m[1] && m[1]!==APP_VERSION) showUpdate();
+  }catch(e){}
+}
 function renderSync(){
   const sw=document.getElementById("syncSwitch"); if(sw) sw.classList.toggle("on",syncOn);
   const det=document.getElementById("syncDetail"); if(det) det.style.display=syncOn?"block":"none";
@@ -1599,7 +1665,11 @@ document.getElementById("reloadBtn").onclick=()=>{
   toast("Updating…");
   setTimeout(()=>location.replace(location.pathname+"?v="+Date.now()),250);  // cache-busting fresh fetch, same origin = same data
 };
-document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ ensureAudio();
+document.getElementById("updateFab").onclick=()=>{
+  saveDraft(); toast("Updating…");
+  setTimeout(()=>location.replace(location.pathname+"?v="+Date.now()),250);
+};
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ ensureAudio(); checkForUpdate();
   if(document.getElementById("rest").classList.contains("show")) tickRest(); tickClock(); } });
 
 /* keep the focused text field visible above the on-screen keyboard */
@@ -1644,6 +1714,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
   document.getElementById("unitLabel").textContent=unit;
   document.getElementById("unitToggle").textContent="Switch to "+(unit==="lb"?"kg":"lb");
   document.getElementById("appVer").textContent=APP_VERSION;
+  if(DEMO) document.getElementById("barSub").textContent="Sample data preview";
   renderRestSeg(); renderAlertList(); renderAlertVol(); renderBgSwitch(); renderSync();
   if(PERSONAL_MESSAGE && PERSONAL_MESSAGE.trim()){
     document.getElementById("personalMsg").style.display="block";
@@ -1659,6 +1730,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
 
 renderToday(); renderHistory(); renderRecords(); updateStats();
 syncPull();
+setTimeout(checkForUpdate, 1500);
 </script>
 </body>
 </html>
