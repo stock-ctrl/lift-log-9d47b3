@@ -677,7 +677,7 @@ input,textarea{font-family:inherit;}
     <div id="syncDetail">
       <p class="note-txt" style="margin:14px 2px 6px;">His private sync code. To see the same data on another device, open the link there and paste this in its settings.</p>
       <div class="code-row"><input id="syncCode" readonly><button id="copyCode" class="btn-outline-sm">Copy</button></div>
-      <p class="note-txt" style="margin:14px 2px 6px;">Recovering on a new phone, or want a code you'll remember? Type one here (16+ characters) and tap Use. Re-enter the same code after a reinstall and everything comes back.</p>
+      <p class="note-txt" style="margin:14px 2px 6px;">Recovering on a new phone, or want a code you'll remember? Type one here (at least 6 characters) and tap Use. Re-enter the same code after a reinstall and everything comes back.</p>
       <div class="code-row"><input id="syncCodeIn" placeholder="Type or paste a sync code" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="useCode" class="btn-outline-sm">Use</button></div>
       <button class="btn btn-ghost" id="syncNowBtn" style="margin-top:6px;">Sync now</button>
     </div>
@@ -737,11 +737,11 @@ input,textarea{font-family:inherit;}
    PERSONAL_MESSAGE: your note to Dad. Leave "" to hide the note card.
    PERSONAL_FROM:   the little label above it (e.g. "From Stock").
    ========================================================================== */
-const PERSONAL_MESSAGE = "";
+const PERSONAL_MESSAGE = "Happy Father's Day, Pops. I hope this gives you a simple way to track your lifts and keep getting a little better every week. Proud of you, and grateful for everything you've taught me. Love you.";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.20b";
+const APP_VERSION = "2026.06.21";
 
 const LS_KEY    = "trever_lifting_v2";
 const DRAFT_KEY = "trever_draft_v2";
@@ -1583,7 +1583,7 @@ document.getElementById("copyCode").onclick=()=>{ const v=syncToken();
   if(navigator.clipboard){ navigator.clipboard.writeText(v).then(()=>toast("Sync code copied")).catch(()=>toast(v)); } else toast(v); };
 document.getElementById("useCode").onclick=async ()=>{
   const v=document.getElementById("syncCodeIn").value.trim();
-  if(v.length<16){ toast("Use a code with 16+ characters"); return; }
+  if(v.length<6){ toast("Use a code with at least 6 characters"); return; }
   if(!syncOn){ syncOn=true; localStorage.setItem(SYNCON_KEY,"1"); }
   localStorage.setItem(TOKEN_KEY,v); localStorage.removeItem(SYNCED_KEY);
   document.getElementById("syncCodeIn").value=""; renderSync();
