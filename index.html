@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f3efe7" media="(prefers-color-scheme: light)">
@@ -122,8 +122,6 @@ input,textarea{font-family:inherit;}
   margin-top:14px;display:flex;align-items:center;gap:10px;
   font-size:13.5px;color:var(--ink-2);
 }
-.fday .pill{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--accent);background:var(--accent-wash);padding:4px 9px;border-radius:20px;white-space:nowrap;}
 #personalMsg{
   display:none;margin-top:12px;background:var(--card);border:1px solid var(--line);
   border-radius:var(--r-md);padding:13px 15px;
@@ -194,7 +192,7 @@ input,textarea{font-family:inherit;}
   align-items:center;gap:6px;
 }
 .set-hd{padding:4px 2px 8px;}
-.set-hd span{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:center;}
+.set-hd span{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;}
 .set-hd span:nth-child(1){text-align:center;}
 .set-hd span:nth-child(2){text-align:left;padding-left:4px;}
 
@@ -648,29 +646,17 @@ input,textarea{font-family:inherit;}
 
   <!-- ===================== MORE ===================== -->
   <section class="view" id="view-settings">
-    <p class="note-txt" style="margin-top:8px;">Everything saves right on this device. No account, no internet needed. Tap Back up to save a copy, on his iPhone you can save it to iCloud Drive or AirDrop it to a Mac, so it shows up there too.</p>
-    <button class="btn btn-outline" id="exportBtn">Back up my workouts</button>
-    <button class="btn btn-outline" id="importBtn" style="margin-top:9px;">Restore from a backup</button>
-    <input type="file" id="importFile" accept="application/json" style="display:none;">
-
     <h2 class="h-sec">Rest timer</h2>
     <p class="note-txt" style="margin-top:0;">Default rest between sets. Tweak it live with the −15 / +15 buttons on the timer.</p>
     <div class="seg" id="restSeg"></div>
 
     <h2 class="h-sec">Rest alert</h2>
-    <p class="note-txt" style="margin-top:0;">A gentle custom chime when rest is up. Tap each one to hear it. It's our own sound, not the iPhone's alarm, and it just briefly dips his music or podcast. This is the only cue that can reach him while he's in another app.</p>
+    <p class="note-txt" style="margin-top:0;">A gentle chime when your rest is up. Tap each one to hear it. It's a custom sound, not the iPhone's alarm, and it plays while the app is open.</p>
     <div class="sound-list" id="alertList"></div>
     <div class="vol-row">
       <span class="vol-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 010 6"/><path d="M18.5 7a7 7 0 010 10"/></svg></span>
       <input type="range" id="alertVol" min="0" max="100" step="5" aria-label="Alert volume">
       <span class="vol-val num" id="alertVolVal">70%</span>
-    </div>
-    <div class="toggle-row" id="bgRow">
-      <div>
-        <div class="tg-t">Alert me in other apps</div>
-        <div class="tg-s">Experimental. Tries to chime even after he's switched to YouTube or a podcast. On some phones it may briefly pause that audio. Worth testing on his phone.</div>
-      </div>
-      <button class="switch" id="bgSwitch" role="switch" aria-label="Alert me in other apps"></button>
     </div>
 
     <h2 class="h-sec">Units</h2>
@@ -679,14 +665,14 @@ input,textarea{font-family:inherit;}
     <h2 class="h-sec">Lifetime</h2>
     <p class="stat-big num" id="statLine">No workouts logged yet.</p>
 
-    <h2 class="h-sec">Cloud sync</h2>
-    <p class="note-txt" style="margin-top:0;">Saves to a private spot so his log also shows on his Mac (just open the same link there) and can feed his daily brief. Works offline and syncs when there's signal.</p>
+    <h2 class="h-sec">Backup &amp; sync</h2>
+    <p class="note-txt" style="margin-top:0;">Your workouts back up to the cloud automatically and stay in sync. Open the same link on your Mac to see them there, and they feed your daily brief. Works offline and syncs when you have signal.</p>
     <div class="toggle-row">
       <div><div class="tg-t">Sync this device</div><div class="tg-s" id="syncStatus">…</div></div>
       <button class="switch" id="syncSwitch" role="switch" aria-label="Cloud sync"></button>
     </div>
     <div id="syncDetail">
-      <p class="note-txt" style="margin:14px 2px 6px;">His private sync code. To see the same data on another device, open the link there and paste this in its settings.</p>
+      <p class="note-txt" style="margin:14px 2px 6px;">Your private sync code. To see the same data on another device, open the link there and paste this in its settings.</p>
       <div class="code-row"><input id="syncCode" readonly><button id="copyCode" class="btn-outline-sm">Copy</button></div>
       <p class="note-txt" style="margin:14px 2px 6px;">Recovering on a new phone, or want a code you'll remember? Type one here (at least 6 characters) and tap Use. Re-enter the same code after a reinstall and everything comes back.</p>
       <div class="code-row"><input id="syncCodeIn" placeholder="Type or paste a sync code" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="useCode" class="btn-outline-sm">Use</button></div>
@@ -749,11 +735,11 @@ input,textarea{font-family:inherit;}
    PERSONAL_MESSAGE: your note to Dad. Leave "" to hide the note card.
    PERSONAL_FROM:   the little label above it (e.g. "From Stock").
    ========================================================================== */
-const PERSONAL_MESSAGE = "Happy Father's Day, Pops. I built this tool to weave into your daily life. It'll show up in your daily briefs and your weekly syncs, and best of all, if you ever want anything changed or added, I can do it in a split second. Thanks for being the best example of a father to me.";
+const PERSONAL_MESSAGE = "Happy Father's Day, Pops. I built this tool to weave into your daily life. It'll show up in your daily briefs and your weekly syncs, and best of all, if you ever want anything changed or added, I can do it in a split second. Thanks for being the best example of a father.";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.21e";
+const APP_VERSION = "2026.06.21f";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -832,7 +818,7 @@ const saveRoutines = o => localStorage.setItem(ROUTINES_KEY, JSON.stringify(o));
 function blankDraft(){ return { exercises:[], feel:"", note:"", startedAt:null, lastInput:null, name:"" }; }
 let draft = loadDraft();
 let unit = localStorage.getItem(UNIT_KEY) || "lb";
-let restTarget = parseInt(localStorage.getItem(REST_KEY),10) || 90;
+let restTarget = parseInt(localStorage.getItem(REST_KEY),10) || 120;
 let alertSound = localStorage.getItem(ALERT_KEY) || "soft";
 if(!["soft","bell","wood","off"].includes(alertSound)) alertSound="soft";
 let alertVol = parseFloat(localStorage.getItem(ALERTVOL_KEY)); if(isNaN(alertVol)) alertVol=0.7;
@@ -1530,7 +1516,6 @@ function openSheet(){
   document.getElementById("scrim").classList.add("show");
   document.getElementById("sheet").classList.add("show");
   const s=document.getElementById("exSearch"); s.value=""; renderSheet("");
-  setTimeout(()=>s.focus(),300);
 }
 function closeSheet(){
   document.getElementById("scrim").classList.remove("show");
@@ -1616,6 +1601,19 @@ document.getElementById("clock").onclick=()=>{
 };
 document.getElementById("addExerciseBtn").onclick=openSheet;
 document.getElementById("scrim").onclick=closeSheet;
+(function(){
+  const sheet=document.getElementById("sheet"), list=document.getElementById("exList");
+  let startY=null, dy=0, active=false;
+  sheet.addEventListener("touchstart",e=>{ startY=e.touches[0].clientY; dy=0; active=true; sheet.style.transition="none"; },{passive:true});
+  sheet.addEventListener("touchmove",e=>{
+    if(!active||startY===null) return;
+    const d=e.touches[0].clientY-startY;
+    if(d>6 && list.scrollTop<=0){ dy=d; sheet.style.transform="translateY("+(d-6)+"px)"; e.preventDefault(); }
+  },{passive:false});
+  function endDrag(){ if(!active) return; active=false; sheet.style.transition=""; const dismiss=dy>90; sheet.style.transform=""; if(dismiss) closeSheet(); startY=null; dy=0; }
+  sheet.addEventListener("touchend",endDrag);
+  sheet.addEventListener("touchcancel",endDrag);
+})();
 document.getElementById("exSearch").addEventListener("input",e=>renderSheet(e.target.value));
 document.getElementById("exSearch").addEventListener("keydown",e=>{
   if(e.key==="Enter"){ const v=e.target.value.trim(); if(v) addExercise(v); }
@@ -1635,8 +1633,7 @@ document.getElementById("dayName").addEventListener("keydown",e=>{ if(e.key==="E
 document.getElementById("restClose").onclick=closeRest;
 document.getElementById("restMinus").onclick=()=>adjustRest(-15);
 document.getElementById("restPlus").onclick=()=>adjustRest(15);
-document.getElementById("bgSwitch").onclick=()=>{ bgAlert=!bgAlert; localStorage.setItem(BG_KEY,bgAlert?"1":"0"); renderBgSwitch(); ensureAudio();
-  toast(bgAlert?"On — test it on his phone":"Off"); };
+/* background-alert toggle removed: iOS will not play web audio from the background */
 document.getElementById("alertVol").addEventListener("input",e=>{
   alertVol=Math.min(1,Math.max(0,(+e.target.value)/100)); localStorage.setItem(ALERTVOL_KEY,String(alertVol)); renderAlertVol();
 });
@@ -1701,9 +1698,7 @@ document.addEventListener("focusout",e=>{
 if(window.visualViewport){
   window.visualViewport.addEventListener("resize",()=>{ positionSheet(); if(isField(document.activeElement)) adjustForKeyboard(document.activeElement); });
 }
-document.getElementById("exportBtn").onclick=exportData;
-document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
-document.getElementById("importFile").onchange=e=>{ if(e.target.files[0]) importData(e.target.files[0]); };
+/* manual backup/restore removed — cloud sync backs up automatically */
 /* 'Erase all data' button intentionally removed so it can't be wiped by accident. */
 document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
   unit = unit==="lb"?"kg":"lb"; localStorage.setItem(UNIT_KEY,unit);
