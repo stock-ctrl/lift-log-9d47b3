@@ -558,11 +558,14 @@ input,textarea{font-family:inherit;}
 .plan-wk-mid{flex:1;text-align:center;min-width:0;}
 .plan-wk-t{font-size:16px;font-weight:800;letter-spacing:-.01em;}
 .plan-wk-s{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:1px;}
-.plan-day{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s;}
-.plan-day:active{background:var(--paper-2);}
-.plan-day.rest{cursor:default;}
+.plan-day{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);margin-bottom:8px;overflow:hidden;transition:border-color .15s,background .15s;}
 .plan-day.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
-.pd-date{width:36px;text-align:center;flex-shrink:0;}
+.plan-day.drop-target{border-color:var(--accent);background:var(--accent-wash);}
+.plan-day.dragging{opacity:.4;}
+.pd-head{display:flex;align-items:center;gap:11px;padding:12px 14px;cursor:pointer;}
+.plan-day.rest .pd-head{cursor:default;}
+.pd-head:active{background:var(--paper-2);}
+.pd-date{width:34px;text-align:center;flex-shrink:0;}
 .pd-dow{font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;}
 .pd-num{font-size:18px;font-weight:800;letter-spacing:-.02em;}
 .pd-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
@@ -574,6 +577,29 @@ input,textarea{font-family:inherit;}
 .pd-check svg{width:20px;height:20px;}
 .pd-chev{color:var(--faint);flex-shrink:0;display:flex;}
 .pd-chev svg{width:18px;height:18px;}
+.pd-grip{flex-shrink:0;color:var(--faint);cursor:grab;touch-action:none;display:flex;padding:2px;}
+.pd-grip svg{width:18px;height:18px;}
+.pd-drag{position:fixed;z-index:70;pointer-events:none;opacity:.95;box-shadow:0 12px 30px oklch(0.25 0.02 55 /.32);}
+.pd-body{padding:2px 14px 14px;border-top:1px solid var(--line);}
+.pd-exlist{margin-top:8px;}
+.pd-ex{padding:8px 0;border-bottom:1px dashed var(--line);}
+.pd-ex:last-child{border-bottom:none;}
+.pd-ex-name{font-size:14.5px;font-weight:700;color:var(--ink);}
+.pd-ex-meta{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;}
+.pd-ex-note{font-size:12px;color:var(--ink-2);font-style:italic;margin-top:3px;}
+.pd-acts{margin-top:12px;}
+.pd-acts .btn{margin-top:8px;}
+.pd-acts .btn:first-child{margin-top:0;}
+.pde-name{width:100%;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:17px;font-weight:800;color:var(--ink);margin-top:10px;}
+.pde-name:focus{outline:none;border-color:var(--accent);}
+.pde-ex{padding:10px 0;border-bottom:1px dashed var(--line);}
+.pde-ex-name{width:100%;background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:14px;font-weight:650;color:var(--ink);margin-bottom:6px;}
+.pde-ex-meta{display:flex;gap:6px;align-items:center;}
+.pde-ex-sets{width:74px;flex-shrink:0;text-align:center;}
+.pde-ex-detail{flex:1;min-width:0;}
+.pde-ex-sets,.pde-ex-detail{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:9px 8px;font-size:12.5px;color:var(--ink);font-family:inherit;}
+.pde-ex input:focus{outline:none;border-color:var(--accent);}
+.pde-ex-del{flex-shrink:0;background:none;border:none;color:var(--faint);font-size:18px;cursor:pointer;padding:4px 6px;line-height:1;}
 .ex-plan{margin:0 14px 8px;padding:8px 12px;border-radius:10px;background:var(--accent-wash);font-size:12.5px;line-height:1.5;}
 .ex-plan-target{font-weight:750;color:var(--ink);}
 .ex-plan-note{display:block;color:var(--ink-2);font-weight:600;margin-top:2px;}
@@ -785,7 +811,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.23b";
+const APP_VERSION = "2026.06.24";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -1642,7 +1668,12 @@ function renderRoutineChips(){
 const PLAN_KEY = "trever_plan_v2";
 let planState = (function(){ try{ return JSON.parse(localStorage.getItem(PLAN_KEY))||null; }catch(e){ return null; } })();
 let planViewWeek = planState ? planState.week : null;
+let planExpanded = null;     // day id currently expanded
+let planEdit = null;         // working copy of the expanded day while editing
+let currentLayout = [];      // the 7 slots of the viewed week (after reschedule overrides)
+let dragTarget = null;
 const DOW = ["MON","TUE","WED","THU","FRI","SAT","SUN"];
+
 function mondayOf(d){ d=new Date(d); const k=(d.getDay()+6)%7; d.setDate(d.getDate()-k); d.setHours(0,0,0,0); return d; }
 function isoOf(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function planTargetReps(setsStr){ const m=String(setsStr||"").match(/[×x]\s*(\d+)/); return m?m[1]:null; }
@@ -1653,17 +1684,6 @@ function makeSetsFromPlan(setsStr){
   return Array.from({length:n},()=>({weight:"",reps:"",done:false}));
 }
 function safeColor(c){ return (/^#[0-9a-fA-F]{3,8}$/.test(c||"")) ? c : "var(--accent)"; }
-async function planPull(week){
-  if(DEMO){ renderPlan(); return; }
-  try{
-    const r=await fetch(SYNC_URL,{method:"POST",headers:SYNC_HEADERS,
-      body:JSON.stringify({token:syncToken(),action:"plan_pull",athlete:DAD_NAME,week:(week==null?null:week)})});
-    const j=await r.json();
-    if(j&&j.ok&&j.plan){ planState=j.plan; planViewWeek=planState.week; localStorage.setItem(PLAN_KEY,JSON.stringify(planState)); }
-  }catch(e){}
-  renderPlan();
-}
-// a superset is one plan line ("SUPERSET — A + B", sets "4×8 / 4×15", detail "x | y") -> split into 2 exercises
 function isSuperset(e){ return (String(e.tag||"").toUpperCase().indexOf("SUPERSET")>=0) || /^\s*SUPERSET\b/i.test(e.name||""); }
 function splitSuperset(e){
   const nm=String(e.name||"").replace(/^\s*SUPERSET\s*[—–-]\s*/i,"").trim();
@@ -1671,37 +1691,143 @@ function splitSuperset(e){
   if(names.length<2) return [e];
   const sets=String(e.sets||"").split(/\s*\/\s*/);
   const dets=String(e.detail||"").split(/\s*\|\s*/);
-  return names.map((n,idx)=>({
-    name:n.trim(),
-    sets:(sets[idx]!==undefined?sets[idx]:(sets[0]||"")).trim(),
-    detail:(dets[idx]!==undefined?dets[idx]:(e.detail||"")).trim(),
-    note:e.note, tag:e.tag
-  }));
+  return names.map((n,idx)=>({ name:n.trim(), sets:(sets[idx]!==undefined?sets[idx]:(sets[0]||"")).trim(), detail:(dets[idx]!==undefined?dets[idx]:(e.detail||"")).trim(), note:e.note, tag:e.tag }));
 }
 function expandExercises(list){ const out=[]; (list||[]).forEach(e=>{ if(isSuperset(e)) splitSuperset(e).forEach(x=>out.push(x)); else out.push(e); }); return out; }
+
+/* ---- network ---- */
+async function planFetch(payload){
+  const r=await fetch(SYNC_URL,{method:"POST",headers:SYNC_HEADERS,body:JSON.stringify(Object.assign({token:syncToken(),athlete:DAD_NAME},payload))});
+  return r.json();
+}
+async function planPull(week){
+  if(DEMO){ renderPlan(); return; }
+  try{ const j=await planFetch({action:"plan_pull",week:(week==null?null:week)});
+    if(j&&j.ok&&j.plan){ planState=j.plan; planViewWeek=planState.week; }
+  }catch(e){}
+  await schedRefresh();
+  if(planState) localStorage.setItem(PLAN_KEY,JSON.stringify(planState));
+  renderPlan();
+}
+async function schedRefresh(){
+  if(DEMO||!planState||planState.current_week==null) return;
+  const viewed=(planViewWeek!=null?planViewWeek:planState.week);
+  const vMon=mondayOf(new Date()); vMon.setDate(vMon.getDate()+(viewed-planState.current_week)*7);
+  const from=isoOf(vMon); const e=new Date(vMon); e.setDate(vMon.getDate()+6); const to=isoOf(e);
+  try{ const j=await planFetch({action:"sched_pull",from,to});
+    const map={}; if(j&&j.ok&&Array.isArray(j.schedule)) j.schedule.forEach(row=>{ map[row.scheduled_date]=row.plan_day_id||null; });
+    planState.schedule=map;
+  }catch(e){ planState.schedule=planState.schedule||{}; }
+}
+async function schedSet(items){ if(DEMO) return; try{ await planFetch({action:"sched_set",items}); }catch(e){} }
+async function planDaySave(row){ if(DEMO) return false; try{ const j=await planFetch({action:"plan_day_set",row}); return !!(j&&j.ok); }catch(e){ return false; } }
+
+/* ---- which workout sits on a given date (applies reschedule overrides) ---- */
+function planDayForDate(dISO, code){
+  const ps=planState; if(!ps) return null;
+  const sched=ps.schedule||{};
+  if(Object.prototype.hasOwnProperty.call(sched,dISO)){ const pid=sched[dISO]; return pid?(ps.days.find(d=>d.id===pid)||null):null; }
+  return ps.days.find(d=>d.day_code===code)||null;
+}
+function buildLayout(){
+  const ps=planState; const viewed=(planViewWeek!=null?planViewWeek:ps.week);
+  const vMon=mondayOf(new Date()); vMon.setDate(vMon.getDate()+(viewed-ps.current_week)*7);
+  return DOW.map((code,i)=>{ const date=new Date(vMon); date.setDate(vMon.getDate()+i);
+    return { code, date, dISO:isoOf(date), planDay: planDayForDate(isoOf(date), code) }; });
+}
+
+/* ---- load a day into the Workout tab ---- */
 function buildDraftFromDay(day){
   draft=blankDraft(); draft.name=day.focus||"";
   draft.exercises=expandExercises(day.exercises).map(e=>({ name:e.name, plan:{sets:e.sets,detail:e.detail,note:e.note,tag:e.tag}, sets:makeSetsFromPlan(e.sets) }));
   saveDraft();
 }
-function applyPlanDay(day){
+function startPlanDay(day){
   const go=()=>{ buildDraftFromDay(day); renderToday(); switchTab("today"); toast("Loaded "+(day.focus||"workout")); };
   const hasWork=draft.exercises.some(e=>e.sets.some(s=>s.done||num(s.weight)||num(s.reps)));
-  if(hasWork){ if(confirm("Load \""+(day.focus||"workout")+"\"? This replaces your current workout.")) go(); }
-  else go();
+  if(hasWork){ if(confirm("Load \""+(day.focus||"workout")+"\"? This replaces your current workout.")) go(); } else go();
 }
-// on open: auto-load today's planned workout (unless he's mid-workout or already did today)
 function maybeAutoLoadToday(){
   if(DEMO) return;
   const hasWork=draft.exercises.some(e=>e.sets.some(s=>s.done||num(s.weight)||num(s.reps)));
   if(hasWork) return;
   const today=todayISO();
   if(loadWorkouts().some(w=>w.date===today)) return;
-  const ps=planState; if(!ps||!Array.isArray(ps.days)) return;
-  const code=DOW[(new Date().getDay()+6)%7];
-  const day=ps.days.find(d=>d.day_code===code);
+  const day=planDayForDate(today, DOW[(new Date().getDay()+6)%7]);
   if(day && day.exercises && day.exercises.length){ buildDraftFromDay(day); renderToday(); toast("Today: "+(day.focus||"workout")); }
 }
+
+/* ---- reschedule: swap two slots, persist ---- */
+function swapSlots(a,b){
+  const la=currentLayout[a], lb=currentLayout[b];
+  const tmp=la.planDay; la.planDay=lb.planDay; lb.planDay=tmp;
+  const items=currentLayout.map(x=>({scheduled_date:x.dISO, plan_day_id: x.planDay?x.planDay.id:null}));
+  const map=Object.assign({}, planState.schedule||{}); items.forEach(it=>map[it.scheduled_date]=it.plan_day_id);
+  planState.schedule=map; localStorage.setItem(PLAN_KEY,JSON.stringify(planState));
+  schedSet(items); renderPlan(); toast("Rescheduled");
+}
+function startDrag(e, idx){
+  e.preventDefault(); e.stopPropagation();
+  const cards=Array.prototype.slice.call(document.querySelectorAll(".plan-day"));
+  const srcEl=cards[idx]; if(!srcEl) return;
+  const rect=srcEl.getBoundingClientRect();
+  const clone=srcEl.cloneNode(true); clone.classList.add("pd-drag"); clone.classList.remove("open");
+  clone.style.width=rect.width+"px"; clone.style.left=rect.left+"px"; clone.style.top=rect.top+"px";
+  document.body.appendChild(clone); srcEl.classList.add("dragging");
+  const offY=e.clientY-rect.top; dragTarget=idx;
+  function move(ev){
+    clone.style.top=(ev.clientY-offY)+"px";
+    let t=idx; cards.forEach((c,i)=>{ const r=c.getBoundingClientRect(); if(ev.clientY>=r.top && ev.clientY<=r.bottom) t=i; });
+    dragTarget=t; cards.forEach((c,i)=>c.classList.toggle("drop-target", i===t && i!==idx));
+  }
+  function up(){
+    document.removeEventListener("pointermove",move); document.removeEventListener("pointerup",up);
+    clone.remove(); srcEl.classList.remove("dragging"); cards.forEach(c=>c.classList.remove("drop-target"));
+    const t=dragTarget; dragTarget=null;
+    if(t!=null && t!==idx) swapSlots(idx,t);
+  }
+  document.addEventListener("pointermove",move); document.addEventListener("pointerup",up);
+}
+
+/* ---- editing a day's name + exercises (writes to the plan) ---- */
+function startEdit(day){ planEdit=JSON.parse(JSON.stringify(day)); planExpanded=day.id; renderPlan(); }
+async function saveEdit(){
+  const ps=planState, d=planEdit; if(!d) return;
+  d.exercises=(d.exercises||[]).filter(e=>(e.name||"").trim());
+  const sort=ps.days.findIndex(x=>x.id===d.id);
+  const row={ id:d.id, athlete:DAD_NAME, week_num:ps.week, week_label:ps.week_label||"", week_subtitle:ps.week_subtitle||"",
+    day_code:d.day_code, sort:(sort<0?0:sort), focus:d.focus||"", tag:d.tag||"", color:d.color||"", cardio:!!d.cardio, exercises:d.exercises };
+  toast("Saving…");
+  const ok=await planDaySave(row);
+  if(ok){ const idx=ps.days.findIndex(x=>x.id===d.id); if(idx>=0){ ps.days[idx].focus=d.focus; ps.days[idx].exercises=d.exercises; }
+    localStorage.setItem(PLAN_KEY,JSON.stringify(ps)); planEdit=null; renderPlan(); toast("Saved"); }
+  else toast("Couldn't save (offline?)");
+}
+function buildEditor(){
+  const d=planEdit, wrap=document.createElement("div"); wrap.className="pd-editor";
+  const nameI=document.createElement("input"); nameI.className="pde-name"; nameI.value=d.focus||""; nameI.placeholder="Workout name"; nameI.oninput=()=>{ d.focus=nameI.value; };
+  wrap.appendChild(nameI);
+  (d.exercises||[]).forEach((e,idx)=>{
+    const r=document.createElement("div"); r.className="pde-ex";
+    const en=document.createElement("input"); en.className="pde-ex-name"; en.value=e.name||""; en.placeholder="Exercise name"; en.oninput=()=>{ e.name=en.value; };
+    const meta=document.createElement("div"); meta.className="pde-ex-meta";
+    const es=document.createElement("input"); es.className="pde-ex-sets"; es.value=e.sets||""; es.placeholder="4×10"; es.oninput=()=>{ e.sets=es.value; };
+    const ed=document.createElement("input"); ed.className="pde-ex-detail"; ed.value=e.detail||""; ed.placeholder="weight / notes"; ed.oninput=()=>{ e.detail=ed.value; };
+    const del=document.createElement("button"); del.className="pde-ex-del"; del.innerHTML="✕"; del.setAttribute("aria-label","Remove"); del.onclick=()=>{ d.exercises.splice(idx,1); renderPlan(); };
+    meta.appendChild(es); meta.appendChild(ed); meta.appendChild(del);
+    r.appendChild(en); r.appendChild(meta); wrap.appendChild(r);
+  });
+  const addB=document.createElement("button"); addB.className="add-set"; addB.style.marginTop="10px"; addB.textContent="+ Add exercise";
+  addB.onclick=()=>{ d.exercises.push({name:"",sets:"",detail:"",note:"",tag:""}); renderPlan(); };
+  wrap.appendChild(addB);
+  const acts=document.createElement("div"); acts.className="pd-acts";
+  const saveB=document.createElement("button"); saveB.className="btn btn-primary"; saveB.textContent="Save changes"; saveB.onclick=saveEdit;
+  const cancelB=document.createElement("button"); cancelB.className="btn btn-ghost"; cancelB.textContent="Cancel"; cancelB.onclick=()=>{ planEdit=null; renderPlan(); };
+  acts.appendChild(saveB); acts.appendChild(cancelB); wrap.appendChild(acts);
+  return wrap;
+}
+function planChevron(open){ return '<span class="pd-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="'+(open?"M6 15l6-6 6 6":"M9 6l6 6-6 6")+'"/></svg></span>'; }
+
 function renderPlan(){
   const host=document.getElementById("planDays"); if(!host) return;
   const lbl=document.getElementById("planWeekLabel"), sub=document.getElementById("planWeekSub"), empty=document.getElementById("planEmpty");
@@ -1713,33 +1839,58 @@ function renderPlan(){
     prevB.disabled=true; nextB.disabled=true; return;
   }
   empty.style.display="none";
-  const viewed = (planViewWeek!=null?planViewWeek:ps.week);
-  lbl.textContent = (ps.week_label||("Week "+viewed)) + (viewed===ps.current_week?" · This week":"");
-  sub.textContent = ps.week_subtitle||"";
-  const weeks = (ps.weeks&&ps.weeks.length)?ps.weeks:[viewed];
-  prevB.disabled = viewed<=Math.min.apply(null,weeks);
-  nextB.disabled = viewed>=Math.max.apply(null,weeks);
+  const viewed=(planViewWeek!=null?planViewWeek:ps.week);
+  lbl.textContent=(ps.week_label||("Week "+viewed))+(viewed===ps.current_week?" · This week":"");
+  sub.textContent=ps.week_subtitle||"";
+  const weeks=(ps.weeks&&ps.weeks.length)?ps.weeks:[viewed];
+  prevB.disabled=viewed<=Math.min.apply(null,weeks);
+  nextB.disabled=viewed>=Math.max.apply(null,weeks);
+  currentLayout=buildLayout();
   const today=todayISO();
-  const vMon=mondayOf(new Date()); vMon.setDate(vMon.getDate()+(viewed-ps.current_week)*7);
   host.innerHTML="";
-  DOW.forEach((code,i)=>{
-    const date=new Date(vMon); date.setDate(vMon.getDate()+i); const dISO=isoOf(date);
-    const day=ps.days.find(d=>d.day_code===code);
-    const isToday=dISO===today;
-    const done=loadWorkouts().some(w=>w.date===dISO);
-    const card=document.createElement("div"); card.className="plan-day"+(isToday?" today":"")+(day?"":" rest");
-    const dateHtml='<div class="pd-date"><div class="pd-dow">'+code+'</div><div class="pd-num num">'+date.getDate()+'</div></div>';
+  currentLayout.forEach((slot,i)=>{
+    const day=slot.planDay, isToday=slot.dISO===today, done=loadWorkouts().some(w=>w.date===slot.dISO);
+    const expanded = day && planExpanded===day.id;
+    const card=document.createElement("div"); card.className="plan-day"+(isToday?" today":"")+(day?"":" rest")+(expanded?" open":"");
+    const dateHtml='<div class="pd-date"><div class="pd-dow">'+slot.code+'</div><div class="pd-num num">'+slot.date.getDate()+'</div></div>';
+    const head=document.createElement("div"); head.className="pd-head";
     if(day){
       const exN=expandExercises(day.exercises).length;
-      card.innerHTML=dateHtml+
+      head.innerHTML=dateHtml+
         '<span class="pd-dot" style="background:'+safeColor(day.color)+'"></span>'+
         '<div class="pd-main"><div class="pd-focus">'+escapeHtml(day.focus)+'</div>'+
         '<div class="pd-sub">'+exN+' exercise'+(exN===1?'':'s')+(day.tag?' · '+escapeHtml(day.tag):'')+'</div></div>'+
-        (done?'<span class="pd-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>'
-             :'<span class="pd-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>');
-      card.onclick=()=>applyPlanDay(day);
+        (done?'<span class="pd-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>':'')+
+        planChevron(expanded)+
+        '<span class="pd-grip" aria-label="Drag to reschedule"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></span>';
+      head.onclick=()=>{ if(planExpanded===day.id){ planExpanded=null; planEdit=null; } else { planExpanded=day.id; planEdit=null; } renderPlan(); };
+      card.appendChild(head);
+      const grip=head.querySelector(".pd-grip");
+      grip.onclick=e=>e.stopPropagation();
+      grip.addEventListener("pointerdown", function(e){ startDrag(e, i); });
+      if(expanded){
+        const body=document.createElement("div"); body.className="pd-body";
+        if(planEdit && planEdit.id===day.id){ body.appendChild(buildEditor()); }
+        else{
+          const ul=document.createElement("div"); ul.className="pd-exlist";
+          (day.exercises||[]).forEach(e=>{
+            const row=document.createElement("div"); row.className="pd-ex";
+            row.innerHTML='<div class="pd-ex-name">'+escapeHtml(e.name||"")+'</div>'+
+              '<div class="pd-ex-meta">'+[escapeHtml(e.sets||""), escapeHtml(e.detail||"")].filter(Boolean).join(" · ")+'</div>'+
+              (e.note?'<div class="pd-ex-note">'+escapeHtml(e.note)+'</div>':'');
+            ul.appendChild(row);
+          });
+          body.appendChild(ul);
+          const acts=document.createElement("div"); acts.className="pd-acts";
+          const startBtn=document.createElement("button"); startBtn.className="btn btn-primary"; startBtn.textContent="Start this workout"; startBtn.onclick=()=>startPlanDay(day);
+          const editBtn=document.createElement("button"); editBtn.className="btn btn-outline"; editBtn.textContent="Edit workout"; editBtn.onclick=()=>startEdit(day);
+          acts.appendChild(startBtn); acts.appendChild(editBtn); body.appendChild(acts);
+        }
+        card.appendChild(body);
+      }
     } else {
-      card.innerHTML=dateHtml+'<div class="pd-main"><div class="pd-focus rest">Rest day</div></div>';
+      head.innerHTML=dateHtml+'<div class="pd-main"><div class="pd-focus rest">Rest day</div></div>';
+      card.appendChild(head);
     }
     host.appendChild(card);
   });
