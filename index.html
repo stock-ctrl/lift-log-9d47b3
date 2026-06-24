@@ -559,6 +559,7 @@ input,textarea{font-family:inherit;}
 .plan-wk-mid{flex:1;text-align:center;min-width:0;}
 .plan-wk-t{font-size:16px;font-weight:800;letter-spacing:-.01em;}
 .plan-wk-s{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:1px;}
+.plan-setweek{margin-bottom:10px;}
 .plan-day{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);margin-bottom:8px;overflow:hidden;transition:border-color .15s,background .15s;}
 .plan-day.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
 .plan-day.drop-target{border-color:var(--accent);background:var(--accent-wash);}
@@ -815,7 +816,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.24c";
+const APP_VERSION = "2026.06.24d";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -1728,6 +1729,12 @@ async function schedRefresh(){
 }
 async function schedSet(items){ if(DEMO) return; try{ await planFetch({action:"sched_set",items}); }catch(e){} }
 async function planDaySave(row){ if(DEMO) return false; try{ const j=await planFetch({action:"plan_day_set",row}); return !!(j&&j.ok); }catch(e){ return false; } }
+async function setCurrentWeek(week){
+  if(DEMO) return;
+  try{ await planFetch({action:"set_week",week}); }catch(e){}
+  planState.current_week=week; planViewWeek=week; localStorage.setItem(PLAN_KEY,JSON.stringify(planState));
+  await schedRefresh(); renderPlan(); toast("Set as your current week");
+}
 
 /* ---- which workout sits on a given date (applies reschedule overrides) ---- */
 function planDayForDate(dISO, code){
@@ -1855,6 +1862,12 @@ function renderPlan(){
   currentLayout=buildLayout();
   const today=todayISO();
   host.innerHTML="";
+  if(viewed!==ps.current_week){
+    const sw=document.createElement("button"); sw.className="btn btn-outline plan-setweek";
+    sw.textContent="Set "+(ps.week_label||("Week "+viewed))+" as my current week";
+    sw.onclick=()=>setCurrentWeek(viewed);
+    host.appendChild(sw);
+  }
   currentLayout.forEach((slot,i)=>{
     const day=slot.planDay, isToday=slot.dISO===today, done=loadWorkouts().some(w=>w.date===slot.dISO);
     const expanded = day && planExpanded===day.id;
