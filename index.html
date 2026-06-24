@@ -562,6 +562,8 @@ input,textarea{font-family:inherit;}
 .plan-day.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
 .plan-day.drop-target{border-color:var(--accent);background:var(--accent-wash);}
 .plan-day.dragging{opacity:.4;}
+.plan-day{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:none !important;-webkit-touch-callout:none !important;cursor:grabbing !important;}
 .pd-head{display:flex;align-items:center;gap:11px;padding:12px 14px;cursor:pointer;}
 .plan-day.rest .pd-head{cursor:default;}
 .pd-head:active{background:var(--paper-2);}
@@ -577,7 +579,8 @@ input,textarea{font-family:inherit;}
 .pd-check svg{width:20px;height:20px;}
 .pd-chev{color:var(--faint);flex-shrink:0;display:flex;}
 .pd-chev svg{width:18px;height:18px;}
-.pd-grip{flex-shrink:0;color:var(--faint);cursor:grab;touch-action:none;display:flex;padding:2px;}
+.pd-grip{flex-shrink:0;color:var(--muted);cursor:grab;touch-action:none;display:flex;align-items:center;padding:8px 6px;margin:-8px -4px -8px 0;border-radius:8px;}
+.pd-grip:active{background:var(--paper-2);}
 .pd-grip svg{width:18px;height:18px;}
 .pd-drag{position:fixed;z-index:70;pointer-events:none;opacity:.95;box-shadow:0 12px 30px oklch(0.25 0.02 55 /.32);}
 .pd-body{padding:2px 14px 14px;border-top:1px solid var(--line);}
@@ -811,7 +814,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.24";
+const APP_VERSION = "2026.06.24b";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -1773,7 +1776,7 @@ function startDrag(e, idx){
   const rect=srcEl.getBoundingClientRect();
   const clone=srcEl.cloneNode(true); clone.classList.add("pd-drag"); clone.classList.remove("open");
   clone.style.width=rect.width+"px"; clone.style.left=rect.left+"px"; clone.style.top=rect.top+"px";
-  document.body.appendChild(clone); srcEl.classList.add("dragging");
+  document.body.appendChild(clone); srcEl.classList.add("dragging"); document.body.classList.add("drag-lock");
   const offY=e.clientY-rect.top; dragTarget=idx;
   function move(ev){
     clone.style.top=(ev.clientY-offY)+"px";
@@ -1782,7 +1785,7 @@ function startDrag(e, idx){
   }
   function up(){
     document.removeEventListener("pointermove",move); document.removeEventListener("pointerup",up);
-    clone.remove(); srcEl.classList.remove("dragging"); cards.forEach(c=>c.classList.remove("drop-target"));
+    clone.remove(); srcEl.classList.remove("dragging"); document.body.classList.remove("drag-lock"); cards.forEach(c=>c.classList.remove("drop-target"));
     const t=dragTarget; dragTarget=null;
     if(t!=null && t!==idx) swapSlots(idx,t);
   }
