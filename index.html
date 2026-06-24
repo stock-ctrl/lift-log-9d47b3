@@ -139,6 +139,8 @@ input,textarea{font-family:inherit;}
 .day-eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:18px 2px 0;}
 .day-eyebrow.plan{color:var(--accent);}
 .day-name.from-plan{background:var(--accent-wash);border-color:color-mix(in oklch,var(--accent) 32%,transparent);}
+.fb-box{display:none;}
+.fb-box.open{display:block;}
 .routine-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
 .routine-chips .rc-lead{width:100%;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;}
 .routine-chips .rc{
@@ -679,9 +681,12 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
     <textarea class="note" id="feelNote" placeholder="Notes? (bench felt strong, knee a little sore, new PR on squats...)"></textarea>
 
     <h2 class="h-sec">Feedback for Stock</h2>
-    <p class="note-txt" style="margin-top:0;">Want a change or adjustment to your plan? Send it straight to Stock.</p>
-    <textarea class="note" id="fbText" placeholder="e.g. swap deadlifts for something easier on my back, or add more arm work..."></textarea>
-    <button class="btn btn-outline" id="fbSend" style="margin-top:8px;">Send feedback to Stock</button>
+    <button class="btn btn-outline" id="fbToggle">Suggest an app change or feature</button>
+    <div class="fb-box" id="fbBox">
+      <p class="note-txt" style="margin:12px 0 0;">An idea for the app itself, a tweak, a new feature, anything. (Workout changes go in your coach chat.)</p>
+      <textarea class="note" id="fbText" placeholder="e.g. add a rest timer, bigger buttons, show last week's weight..."></textarea>
+      <button class="btn btn-primary" id="fbSend" style="margin-top:8px;">Send to Stock</button>
+    </div>
 
     <button class="btn btn-primary" id="finishBtn" style="margin-top:16px;">Finish &amp; Save Workout</button>
     <button class="btn btn-ghost" id="discardBtn" style="margin-top:4px;">Discard this session</button>
@@ -825,7 +830,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.24f";
+const APP_VERSION = "2026.06.24g";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -1974,13 +1979,17 @@ document.querySelectorAll(".feel").forEach(c=>c.onclick=()=>{
   draft.feel=(draft.feel===c.dataset.feel)?"":c.dataset.feel; saveDraft(); renderToday();
 });
 document.getElementById("feelNote").addEventListener("input",e=>{ draft.note=e.target.value; saveDraft(); });
+(function(){
+  const fbToggle=document.getElementById("fbToggle"), fbBox=document.getElementById("fbBox");
+  if(fbToggle) fbToggle.onclick=()=>{ const open=fbBox.classList.toggle("open"); if(open) document.getElementById("fbText").focus(); };
+})();
 document.getElementById("fbSend").onclick=async ()=>{
   const t=document.getElementById("fbText"); const msg=(t.value||"").trim();
   if(!msg){ t.focus(); return; }
   if(DEMO){ toast("Feedback (demo — not sent)"); return; }
   const btn=document.getElementById("fbSend"); btn.disabled=true; toast("Sending…");
   try{ const r=await fetch(SYNC_URL,{method:"POST",headers:SYNC_HEADERS,body:JSON.stringify({token:syncToken(),action:"feedback",athlete:DAD_NAME,message:msg,workout:(draft.name||"")})});
-    const j=await r.json(); if(j&&j.ok){ t.value=""; toast("Sent to Stock 👍"); } else toast("Couldn't send"); }
+    const j=await r.json(); if(j&&j.ok){ t.value=""; document.getElementById("fbBox").classList.remove("open"); toast("Sent to Stock 👍"); } else toast("Couldn't send"); }
   catch(e){ toast("Couldn't send (offline?)"); }
   btn.disabled=false;
 };
