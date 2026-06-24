@@ -550,6 +550,34 @@ input,textarea{font-family:inherit;}
 .update-fab svg{width:17px;height:17px;}
 @keyframes fabpop{0%{opacity:0;transform:translateY(14px) scale(.9)}100%{opacity:1;transform:none}}
 
+/* ---------- plan tab ---------- */
+.plan-wk{display:flex;align-items:center;gap:10px;margin:2px 0 14px;}
+.plan-nav{width:38px;height:38px;border-radius:11px;border:1px solid var(--line-2);background:var(--card);color:var(--ink);font-size:20px;font-weight:700;line-height:1;cursor:pointer;flex-shrink:0;}
+.plan-nav:disabled{opacity:.35;cursor:default;}
+.plan-nav:active:not(:disabled){background:var(--paper-2);}
+.plan-wk-mid{flex:1;text-align:center;min-width:0;}
+.plan-wk-t{font-size:16px;font-weight:800;letter-spacing:-.01em;}
+.plan-wk-s{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:1px;}
+.plan-day{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s;}
+.plan-day:active{background:var(--paper-2);}
+.plan-day.rest{cursor:default;}
+.plan-day.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+.pd-date{width:36px;text-align:center;flex-shrink:0;}
+.pd-dow{font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;}
+.pd-num{font-size:18px;font-weight:800;letter-spacing:-.02em;}
+.pd-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.pd-main{flex:1;min-width:0;}
+.pd-focus{font-size:15px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pd-focus.rest{color:var(--muted);font-weight:600;}
+.pd-sub{font-size:12px;color:var(--muted);font-weight:600;margin-top:1px;}
+.pd-check{color:var(--good);flex-shrink:0;display:flex;}
+.pd-check svg{width:20px;height:20px;}
+.pd-chev{color:var(--faint);flex-shrink:0;display:flex;}
+.pd-chev svg{width:18px;height:18px;}
+.ex-plan{margin:0 14px 8px;padding:8px 12px;border-radius:10px;background:var(--accent-wash);font-size:12.5px;line-height:1.5;}
+.ex-plan-target{font-weight:750;color:var(--ink);}
+.ex-plan-note{display:block;color:var(--ink-2);font-weight:600;margin-top:2px;}
+
 @media (max-width:360px){
   .set-hd,.set-row{grid-template-columns:26px 1fr 52px 46px 80px;gap:5px;}
   .cell{font-size:17px;}
@@ -629,6 +657,21 @@ input,textarea{font-family:inherit;}
     </div>
   </section>
 
+  <!-- ===================== PLAN ===================== -->
+  <section class="view" id="view-plan">
+    <div class="plan-wk">
+      <button class="plan-nav" id="planPrev" aria-label="Previous week">‹</button>
+      <div class="plan-wk-mid"><div class="plan-wk-t" id="planWeekLabel">—</div><div class="plan-wk-s" id="planWeekSub"></div></div>
+      <button class="plan-nav" id="planNext" aria-label="Next week">›</button>
+    </div>
+    <div id="planDays"></div>
+    <div id="planEmpty" class="empty">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 3v3M16 3v3"/></svg></div>
+      <div class="lead">No plan loaded yet</div>
+      <div class="sub">Your coach loads your week here.</div>
+    </div>
+  </section>
+
   <!-- ===================== PROGRESS ===================== -->
   <section class="view" id="view-records">
     <h2 class="h-sec" style="margin-top:8px;">Bodyweight</h2>
@@ -694,6 +737,9 @@ input,textarea{font-family:inherit;}
   <button data-tab="today" class="active">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M4 9v6M20 9v6M6.5 12h11"/></svg>Workout
   </button>
+  <button data-tab="plan">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 3v3M16 3v3"/></svg>Plan
+  </button>
   <button data-tab="history">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>History
   </button>
@@ -739,7 +785,7 @@ const PERSONAL_MESSAGE = "Happy Father's Day, Pops. I built this tool to help yo
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.21g";
+const APP_VERSION = "2026.06.23";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -926,6 +972,15 @@ function renderToday(){
     }
     head.append(menu); card.appendChild(head);
 
+    // prescribed target from the plan (when this exercise was loaded from his program)
+    if(ex.plan && (ex.plan.sets || ex.plan.detail || ex.plan.note)){
+      const pl=document.createElement("div"); pl.className="ex-plan";
+      const target=[ex.plan.sets, ex.plan.detail].filter(Boolean).join(" · ");
+      pl.innerHTML=(target?'<span class="ex-plan-target">'+escapeHtml(target)+'</span>':'')+
+        (ex.plan.note?'<span class="ex-plan-note">'+escapeHtml(ex.plan.note)+'</span>':'');
+      card.appendChild(pl);
+    }
+
     // progressive-overload nudge: remind him what he did last time and offer a bump
     if(prev && prev.length){
       let top=prev[0]; prev.forEach(s=>{ if(num(s.weight)>num(top.weight)) top=s; });
@@ -958,7 +1013,7 @@ function renderToday(){
       w.value=s.weight; w.placeholder=pv?pv.weight:"0";
       w.oninput=()=>{ s.weight=w.value; markStart(); liveSummary(); vol.textContent=recalcVol(ex); };
       const r=document.createElement("input"); r.className="cell num"; r.type="number"; r.inputMode="numeric"; r.min="0";
-      r.value=s.reps; r.placeholder=pv?pv.reps:"0";
+      r.value=s.reps; r.placeholder=pv?pv.reps:((ex.plan&&planTargetReps(ex.plan.sets))||"0");
       r.oninput=()=>{ s.reps=r.value; markStart(); liveSummary(); vol.textContent=recalcVol(ex); };
       if(pv) p.onclick=()=>{ s.weight=pv.weight; s.reps=pv.reps; saveDraft(); renderToday(); };
       const ck=document.createElement("button"); ck.className="check"; ck.setAttribute("aria-label","Complete set");
@@ -1583,8 +1638,87 @@ function renderRoutineChips(){
     c.onclick=()=>applyRoutine(rt); host.appendChild(c); });
 }
 
+/* ======================= PLAN (coach's program from Supabase) ======================= */
+const PLAN_KEY = "trever_plan_v2";
+let planState = (function(){ try{ return JSON.parse(localStorage.getItem(PLAN_KEY))||null; }catch(e){ return null; } })();
+let planViewWeek = planState ? planState.week : null;
+const DOW = ["MON","TUE","WED","THU","FRI","SAT","SUN"];
+function mondayOf(d){ d=new Date(d); const k=(d.getDay()+6)%7; d.setDate(d.getDate()-k); d.setHours(0,0,0,0); return d; }
+function isoOf(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function planTargetReps(setsStr){ const m=String(setsStr||"").match(/[×x]\s*(\d+)/); return m?m[1]:null; }
+function makeSetsFromPlan(setsStr){
+  let n=3; const m=String(setsStr||"").match(/^\s*(\d+)\s*[×x]/); const r=String(setsStr||"").match(/^\s*(\d+)\s*rounds/i);
+  if(m) n=parseInt(m[1],10); else if(r) n=parseInt(r[1],10);
+  n=Math.max(1,Math.min(8,n||3));
+  return Array.from({length:n},()=>({weight:"",reps:"",done:false}));
+}
+function safeColor(c){ return (/^#[0-9a-fA-F]{3,8}$/.test(c||"")) ? c : "var(--accent)"; }
+async function planPull(week){
+  if(DEMO){ renderPlan(); return; }
+  try{
+    const r=await fetch(SYNC_URL,{method:"POST",headers:SYNC_HEADERS,
+      body:JSON.stringify({token:syncToken(),action:"plan_pull",athlete:DAD_NAME,week:(week==null?null:week)})});
+    const j=await r.json();
+    if(j&&j.ok&&j.plan){ planState=j.plan; planViewWeek=planState.week; localStorage.setItem(PLAN_KEY,JSON.stringify(planState)); }
+  }catch(e){}
+  renderPlan();
+}
+function applyPlanDay(day){
+  const go=()=>{
+    draft=blankDraft(); draft.name=day.focus||"";
+    draft.exercises=(day.exercises||[]).map(e=>({ name:e.name, plan:{sets:e.sets,detail:e.detail,note:e.note,tag:e.tag}, sets:makeSetsFromPlan(e.sets) }));
+    saveDraft(); renderToday(); switchTab("today");
+    toast("Loaded "+(day.focus||"workout"));
+  };
+  const hasWork=draft.exercises.some(e=>e.sets.some(s=>s.done||num(s.weight)||num(s.reps)));
+  if(hasWork){ if(confirm("Load \""+(day.focus||"workout")+"\"? This replaces your current workout.")) go(); }
+  else go();
+}
+function renderPlan(){
+  const host=document.getElementById("planDays"); if(!host) return;
+  const lbl=document.getElementById("planWeekLabel"), sub=document.getElementById("planWeekSub"), empty=document.getElementById("planEmpty");
+  const prevB=document.getElementById("planPrev"), nextB=document.getElementById("planNext");
+  const ps=planState;
+  if(!ps || !Array.isArray(ps.days) || !ps.days.length){
+    empty.style.display="block"; host.innerHTML="";
+    lbl.textContent = ps ? (ps.week_label||"Plan") : "No plan yet"; sub.textContent="";
+    prevB.disabled=true; nextB.disabled=true; return;
+  }
+  empty.style.display="none";
+  const viewed = (planViewWeek!=null?planViewWeek:ps.week);
+  lbl.textContent = (ps.week_label||("Week "+viewed)) + (viewed===ps.current_week?" · This week":"");
+  sub.textContent = ps.week_subtitle||"";
+  const weeks = (ps.weeks&&ps.weeks.length)?ps.weeks:[viewed];
+  prevB.disabled = viewed<=Math.min.apply(null,weeks);
+  nextB.disabled = viewed>=Math.max.apply(null,weeks);
+  const today=todayISO();
+  const vMon=mondayOf(new Date()); vMon.setDate(vMon.getDate()+(viewed-ps.current_week)*7);
+  host.innerHTML="";
+  DOW.forEach((code,i)=>{
+    const date=new Date(vMon); date.setDate(vMon.getDate()+i); const dISO=isoOf(date);
+    const day=ps.days.find(d=>d.day_code===code);
+    const isToday=dISO===today;
+    const done=loadWorkouts().some(w=>w.date===dISO);
+    const card=document.createElement("div"); card.className="plan-day"+(isToday?" today":"")+(day?"":" rest");
+    const dateHtml='<div class="pd-date"><div class="pd-dow">'+code+'</div><div class="pd-num num">'+date.getDate()+'</div></div>';
+    if(day){
+      const exN=day.exercises?day.exercises.length:0;
+      card.innerHTML=dateHtml+
+        '<span class="pd-dot" style="background:'+safeColor(day.color)+'"></span>'+
+        '<div class="pd-main"><div class="pd-focus">'+escapeHtml(day.focus)+'</div>'+
+        '<div class="pd-sub">'+exN+' exercise'+(exN===1?'':'s')+(day.tag?' · '+escapeHtml(day.tag):'')+'</div></div>'+
+        (done?'<span class="pd-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>'
+             :'<span class="pd-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>');
+      card.onclick=()=>applyPlanDay(day);
+    } else {
+      card.innerHTML=dateHtml+'<div class="pd-main"><div class="pd-focus rest">Rest day</div></div>';
+    }
+    host.appendChild(card);
+  });
+}
+
 /* ======================= TABS ======================= */
-const TAB_TITLE={today:"Today's Workout",history:"History",records:"Progress",settings:"More"};
+const TAB_TITLE={today:"Today's Workout",plan:"Plan",history:"History",records:"Progress",settings:"More"};
 function switchTab(tab){
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
   document.getElementById("view-"+tab).classList.add("active");
@@ -1595,6 +1729,8 @@ function switchTab(tab){
 
 /* ======================= WIRE UP ======================= */
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+document.getElementById("planPrev").onclick=()=>{ const v=(planViewWeek!=null?planViewWeek:(planState?planState.week:null)); if(v!=null) planPull(v-1); };
+document.getElementById("planNext").onclick=()=>{ const v=(planViewWeek!=null?planViewWeek:(planState?planState.week:null)); if(v!=null) planPull(v+1); };
 document.getElementById("clock").onclick=()=>{
   if(!draft.startedAt) return;
   if(confirm("Reset the workout timer? Your logged sets stay.")){ draft.startedAt=null; draft.lastInput=null; saveDraft(); stopWorkoutClock(); }
@@ -1714,7 +1850,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
   document.getElementById("unitToggle").textContent="Switch to "+(unit==="lb"?"kg":"lb");
   document.getElementById("appVer").textContent=APP_VERSION;
   if(DEMO) document.getElementById("barSub").textContent="Sample data preview";
-  renderRestSeg(); renderAlertList(); renderAlertVol(); renderBgSwitch(); renderSync();
+  renderRestSeg(); renderAlertList(); renderAlertVol(); renderBgSwitch(); renderSync(); renderPlan();
   if(PERSONAL_MESSAGE && PERSONAL_MESSAGE.trim()){
     document.getElementById("personalMsg").style.display="block";
     document.getElementById("personalMsgText").textContent=PERSONAL_MESSAGE;
@@ -1729,6 +1865,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
 
 renderToday(); renderHistory(); renderRecords(); updateStats();
 syncPull();
+planPull();
 setTimeout(checkForUpdate, 1500);
 </script>
 </body>
