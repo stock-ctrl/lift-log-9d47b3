@@ -132,10 +132,13 @@ input,textarea{font-family:inherit;}
 /* ---------- day name + routines ---------- */
 .day-name{
   width:100%;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);
-  padding:14px 16px;font-size:20px;font-weight:800;color:var(--ink);margin-top:20px;letter-spacing:-.02em;
+  padding:14px 16px;font-size:20px;font-weight:800;color:var(--ink);margin-top:6px;letter-spacing:-.02em;
 }
 .day-name:focus{outline:none;border-color:var(--accent);}
 .day-name::placeholder{color:var(--faint);font-weight:650;letter-spacing:0;font-size:16px;}
+.day-eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:18px 2px 0;}
+.day-eyebrow.plan{color:var(--accent);}
+.day-name.from-plan{background:var(--accent-wash);border-color:color-mix(in oklch,var(--accent) 32%,transparent);}
 .routine-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
 .routine-chips .rc-lead{width:100%;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;}
 .routine-chips .rc{
@@ -643,6 +646,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
       <div id="personalMsg"><div class="from" id="personalFrom">A note</div><div class="msg" id="personalMsgText"></div></div>
     </div>
 
+    <div class="day-eyebrow" id="dayEyebrow">Workout</div>
     <input class="day-name" id="dayName" placeholder="Name this day — Push, Pull, Legs..." autocomplete="off" autocapitalize="words" spellcheck="false">
     <div class="routine-chips" id="routineChips"></div>
 
@@ -816,7 +820,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.24d";
+const APP_VERSION = "2026.06.24e";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -892,7 +896,7 @@ const loadBW = () => { if(DEMO) return DEMO_BW.slice(); try{ return JSON.parse(l
 const saveBW = a => { if(DEMO) return; localStorage.setItem(BW_KEY, JSON.stringify(a)); };
 const loadRoutines = () => { try{ return JSON.parse(localStorage.getItem(ROUTINES_KEY))||{}; }catch(e){ return {}; } };
 const saveRoutines = o => localStorage.setItem(ROUTINES_KEY, JSON.stringify(o));
-function blankDraft(){ return { exercises:[], feel:"", note:"", startedAt:null, lastInput:null, name:"" }; }
+function blankDraft(){ return { exercises:[], feel:"", note:"", startedAt:null, lastInput:null, name:"", fromPlan:false, planToday:false }; }
 let draft = loadDraft();
 let unit = localStorage.getItem(UNIT_KEY) || "lb";
 let restTarget = parseInt(localStorage.getItem(REST_KEY),10) || 120;
@@ -1092,6 +1096,9 @@ function renderToday(){
   document.querySelectorAll(".feel").forEach(c=>c.classList.toggle("sel",c.dataset.feel===draft.feel));
   document.getElementById("feelNote").value=draft.note||"";
   const dn=document.getElementById("dayName"); if(dn && document.activeElement!==dn) dn.value=draft.name||"";
+  if(dn) dn.classList.toggle("from-plan", !!draft.fromPlan);
+  const eb=document.getElementById("dayEyebrow");
+  if(eb){ eb.textContent = draft.fromPlan ? (draft.planToday?"Today's workout":"From your plan") : "Workout"; eb.classList.toggle("plan", !!draft.fromPlan); }
   renderRoutineChips();
   liveSummary();
 }
@@ -1751,8 +1758,8 @@ function buildLayout(){
 }
 
 /* ---- load a day into the Workout tab ---- */
-function buildDraftFromDay(day){
-  draft=blankDraft(); draft.name=day.focus||"";
+function buildDraftFromDay(day, todayFlag){
+  draft=blankDraft(); draft.name=day.focus||""; draft.fromPlan=true; draft.planToday=!!todayFlag;
   draft.exercises=expandExercises(day.exercises).map(e=>({ name:e.name, plan:{sets:e.sets,detail:e.detail,note:e.note,tag:e.tag}, sets:makeSetsFromPlan(e.sets) }));
   saveDraft();
 }
@@ -1768,7 +1775,7 @@ function maybeAutoLoadToday(){
   const today=todayISO();
   if(loadWorkouts().some(w=>w.date===today)) return;
   const day=planDayForDate(today, DOW[(new Date().getDay()+6)%7]);
-  if(day && day.exercises && day.exercises.length){ buildDraftFromDay(day); renderToday(); toast("Today: "+(day.focus||"workout")); }
+  if(day && day.exercises && day.exercises.length){ buildDraftFromDay(day, true); renderToday(); toast("Today: "+(day.focus||"workout")); }
 }
 
 /* ---- reschedule: swap two slots, persist ---- */
