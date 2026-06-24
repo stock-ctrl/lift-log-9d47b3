@@ -152,10 +152,11 @@ input,textarea{font-family:inherit;}
   background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);
   margin-bottom:14px;overflow:hidden;
 }
-.ex-head{display:flex;align-items:center;gap:10px;padding:14px 14px 10px;}
+.ex-head{display:flex;align-items:flex-start;gap:10px;padding:14px 14px 10px;}
 .ex-name{
   flex:1;min-width:0;font-size:18px;font-weight:750;letter-spacing:-.01em;
   border:none;background:none;color:var(--ink);padding:2px 0;
+  resize:none;overflow:hidden;line-height:1.3;font-family:inherit;display:block;
 }
 .ex-name:focus{outline:none;}
 .ex-vol{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;}
@@ -168,7 +169,7 @@ input,textarea{font-family:inherit;}
 .exd-check{width:26px;height:26px;border-radius:50%;background:var(--good);color:var(--on-accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .exd-check svg{width:15px;height:15px;}
 .exd-main{flex:1;min-width:0;}
-.exd-name{font-size:17px;font-weight:750;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.exd-name{font-size:17px;font-weight:750;letter-spacing:-.01em;line-height:1.25;}
 .exd-sub{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;}
 .exd-add{flex-shrink:0;border:1px dashed var(--line-2);background:none;color:var(--ink-2);border-radius:9px;padding:7px 11px;font-size:12.5px;font-weight:750;cursor:pointer;}
 .exd-add:active{background:var(--card);border-color:var(--accent);color:var(--accent);}
@@ -572,7 +573,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 .pd-num{font-size:18px;font-weight:800;letter-spacing:-.02em;}
 .pd-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 .pd-main{flex:1;min-width:0;}
-.pd-focus{font-size:15px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pd-focus{font-size:15px;font-weight:750;line-height:1.25;}
 .pd-focus.rest{color:var(--muted);font-weight:600;}
 .pd-sub{font-size:12px;color:var(--muted);font-weight:600;margin-top:1px;}
 .pd-check{color:var(--good);flex-shrink:0;display:flex;}
@@ -814,7 +815,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.24b";
+const APP_VERSION = "2026.06.24c";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -981,10 +982,13 @@ function renderToday(){
     }
 
     const head=document.createElement("div"); head.className="ex-head";
-    const nameI=document.createElement("input");
-    nameI.className="ex-name"; nameI.value=ex.name; nameI.spellcheck=false;
+    const nameI=document.createElement("textarea");
+    nameI.className="ex-name"; nameI.value=ex.name; nameI.spellcheck=false; nameI.rows=1;
     nameI.setAttribute("aria-label","Exercise name");
+    const growName=()=>{ nameI.style.height="auto"; nameI.style.height=nameI.scrollHeight+"px"; };
+    nameI.oninput=growName;
     nameI.onchange=()=>{ ex.name=nameI.value.trim()||"Exercise"; saveDraft(); renderToday(); };
+    requestAnimationFrame(growName);
     const vol=document.createElement("div"); vol.className="ex-vol num";
     const evol=ex.sets.reduce((t,s)=>t+num(s.weight)*num(s.reps),0);
     vol.textContent = evol? fmtVol(evol)+" "+unit : "";
