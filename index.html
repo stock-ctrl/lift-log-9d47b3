@@ -830,7 +830,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.24g";
+const APP_VERSION = "2026.06.24h";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -1989,7 +1989,7 @@ document.getElementById("fbSend").onclick=async ()=>{
   if(DEMO){ toast("Feedback (demo — not sent)"); return; }
   const btn=document.getElementById("fbSend"); btn.disabled=true; toast("Sending…");
   try{ const r=await fetch(SYNC_URL,{method:"POST",headers:SYNC_HEADERS,body:JSON.stringify({token:syncToken(),action:"feedback",athlete:DAD_NAME,message:msg,workout:(draft.name||"")})});
-    const j=await r.json(); if(j&&j.ok){ t.value=""; document.getElementById("fbBox").classList.remove("open"); toast("Sent to Stock 👍"); } else toast("Couldn't send"); }
+    const j=await r.json(); if(j&&j.ok){ t.value=""; document.getElementById("fbBox").classList.remove("open"); toast("Message sent"); } else toast("Couldn't send"); }
   catch(e){ toast("Couldn't send (offline?)"); }
   btn.disabled=false;
 };
