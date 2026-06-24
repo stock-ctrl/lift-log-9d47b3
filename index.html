@@ -132,10 +132,10 @@ input,textarea{font-family:inherit;}
 /* ---------- day name + routines ---------- */
 .day-name{
   width:100%;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);
-  padding:13px 15px;font-size:16px;font-weight:750;color:var(--ink);margin-top:20px;letter-spacing:-.01em;
+  padding:14px 16px;font-size:20px;font-weight:800;color:var(--ink);margin-top:20px;letter-spacing:-.02em;
 }
 .day-name:focus{outline:none;border-color:var(--accent);}
-.day-name::placeholder{color:var(--faint);font-weight:600;letter-spacing:0;}
+.day-name::placeholder{color:var(--faint);font-weight:650;letter-spacing:0;font-size:16px;}
 .routine-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
 .routine-chips .rc-lead{width:100%;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;}
 .routine-chips .rc{
@@ -781,11 +781,11 @@ input,textarea{font-family:inherit;}
    PERSONAL_MESSAGE: your note to Dad. Leave "" to hide the note card.
    PERSONAL_FROM:   the little label above it (e.g. "From Stock").
    ========================================================================== */
-const PERSONAL_MESSAGE = "Happy Father's Day, Pops. I built this tool to help you continue to push yourself. It weaves into your daily life and will show up in your daily briefs and your weekly syncs. The best part is that anything can be added, changed, or improved. Thanks for being the perfect example of a father.";
+const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.23";
+const APP_VERSION = "2026.06.23b";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -1663,16 +1663,44 @@ async function planPull(week){
   }catch(e){}
   renderPlan();
 }
+// a superset is one plan line ("SUPERSET — A + B", sets "4×8 / 4×15", detail "x | y") -> split into 2 exercises
+function isSuperset(e){ return (String(e.tag||"").toUpperCase().indexOf("SUPERSET")>=0) || /^\s*SUPERSET\b/i.test(e.name||""); }
+function splitSuperset(e){
+  const nm=String(e.name||"").replace(/^\s*SUPERSET\s*[—–-]\s*/i,"").trim();
+  const names=nm.split(/\s+\+\s+/);
+  if(names.length<2) return [e];
+  const sets=String(e.sets||"").split(/\s*\/\s*/);
+  const dets=String(e.detail||"").split(/\s*\|\s*/);
+  return names.map((n,idx)=>({
+    name:n.trim(),
+    sets:(sets[idx]!==undefined?sets[idx]:(sets[0]||"")).trim(),
+    detail:(dets[idx]!==undefined?dets[idx]:(e.detail||"")).trim(),
+    note:e.note, tag:e.tag
+  }));
+}
+function expandExercises(list){ const out=[]; (list||[]).forEach(e=>{ if(isSuperset(e)) splitSuperset(e).forEach(x=>out.push(x)); else out.push(e); }); return out; }
+function buildDraftFromDay(day){
+  draft=blankDraft(); draft.name=day.focus||"";
+  draft.exercises=expandExercises(day.exercises).map(e=>({ name:e.name, plan:{sets:e.sets,detail:e.detail,note:e.note,tag:e.tag}, sets:makeSetsFromPlan(e.sets) }));
+  saveDraft();
+}
 function applyPlanDay(day){
-  const go=()=>{
-    draft=blankDraft(); draft.name=day.focus||"";
-    draft.exercises=(day.exercises||[]).map(e=>({ name:e.name, plan:{sets:e.sets,detail:e.detail,note:e.note,tag:e.tag}, sets:makeSetsFromPlan(e.sets) }));
-    saveDraft(); renderToday(); switchTab("today");
-    toast("Loaded "+(day.focus||"workout"));
-  };
+  const go=()=>{ buildDraftFromDay(day); renderToday(); switchTab("today"); toast("Loaded "+(day.focus||"workout")); };
   const hasWork=draft.exercises.some(e=>e.sets.some(s=>s.done||num(s.weight)||num(s.reps)));
   if(hasWork){ if(confirm("Load \""+(day.focus||"workout")+"\"? This replaces your current workout.")) go(); }
   else go();
+}
+// on open: auto-load today's planned workout (unless he's mid-workout or already did today)
+function maybeAutoLoadToday(){
+  if(DEMO) return;
+  const hasWork=draft.exercises.some(e=>e.sets.some(s=>s.done||num(s.weight)||num(s.reps)));
+  if(hasWork) return;
+  const today=todayISO();
+  if(loadWorkouts().some(w=>w.date===today)) return;
+  const ps=planState; if(!ps||!Array.isArray(ps.days)) return;
+  const code=DOW[(new Date().getDay()+6)%7];
+  const day=ps.days.find(d=>d.day_code===code);
+  if(day && day.exercises && day.exercises.length){ buildDraftFromDay(day); renderToday(); toast("Today: "+(day.focus||"workout")); }
 }
 function renderPlan(){
   const host=document.getElementById("planDays"); if(!host) return;
@@ -1702,7 +1730,7 @@ function renderPlan(){
     const card=document.createElement("div"); card.className="plan-day"+(isToday?" today":"")+(day?"":" rest");
     const dateHtml='<div class="pd-date"><div class="pd-dow">'+code+'</div><div class="pd-num num">'+date.getDate()+'</div></div>';
     if(day){
-      const exN=day.exercises?day.exercises.length:0;
+      const exN=expandExercises(day.exercises).length;
       card.innerHTML=dateHtml+
         '<span class="pd-dot" style="background:'+safeColor(day.color)+'"></span>'+
         '<div class="pd-main"><div class="pd-focus">'+escapeHtml(day.focus)+'</div>'+
@@ -1865,7 +1893,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
 
 renderToday(); renderHistory(); renderRecords(); updateStats();
 syncPull();
-planPull();
+planPull().then(maybeAutoLoadToday);
 setTimeout(checkForUpdate, 1500);
 </script>
 </body>
