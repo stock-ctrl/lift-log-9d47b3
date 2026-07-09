@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flipper Zero Animator</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0d;--surface:#181818;--border:#2a2a2a;
+  --text:#e0e0e0;--muted:#666;
+  --orange:#ff6a00;--blue:#00b4d8;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font:13px/1.4 "Segoe UI",system-ui,sans-serif}
+
+/* ── Header ─────────────────────────────────────────── */
+#hdr{
+  display:flex;align-items:center;gap:10px;
+  padding:5px 12px;background:var(--surface);
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+#hdr h1{font-size:14px;font-weight:700;color:var(--orange);white-space:nowrap;letter-spacing:.3px}
+.hg{display:flex;align-items:center;gap:6px}
+label{color:var(--muted);font-size:11px}
+input[type=text],input[type=number]{
+  background:#111;border:1px solid var(--border);color:var(--text);
+  border-radius:4px;padding:3px 7px;font-size:12px
+}
+input[type=number]{width:52px}
+.spacer{flex:1}
+#coords{font:11px/1 monospace;color:var(--muted);min-width:70px;text-align:right}
+
+/* ── Main ────────────────────────────────────────────── */
+#main{display:flex;flex:1;overflow:hidden}
+
+/* ── Tool panel ──────────────────────────────────────── */
+#tp{
+  width:52px;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;
+  padding:8px 4px;gap:3px;overflow-y:auto;flex-shrink:0
+}
+.tb{
+  width:40px;height:38px;background:#111;border:1px solid var(--border);
+  border-radius:5px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:16px;color:var(--text);flex-shrink:0;
+  transition:border-color .1s,background .1s;user-select:none
+}
+.tb:hover{background:#222;border-color:#444}
+.tb.on{background:#1e0d00;border-color:var(--orange)}
+.sep{width:34px;height:1px;background:var(--border);margin:3px 0}
+.sw{
+  width:22px;height:22px;border-radius:3px;cursor:pointer;
+  border:2px solid #555;flex-shrink:0
+}
+.sw.on{border-color:var(--orange)}
+#sw-white{background:#fff}
+#sw-black{background:#111;border-color:#555}
+
+/* ── Editor area ─────────────────────────────────────── */
+#ea{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:14px;padding:14px;overflow:auto;background:var(--bg)
+}
+#editor{cursor:crosshair;image-rendering:pixelated;
+  display:block;border:1px solid #2a2a2a}
+
+/* ── Preview row ─────────────────────────────────────── */
+#prev-row{display:flex;align-items:center;gap:12px;flex-shrink:0}
+#preview{image-rendering:pixelated;display:block;border:1px solid #2a2a2a}
+.pl{font-size:11px;color:var(--muted)}
+#play-btn{
+  padding:4px 14px;background:var(--surface);border:1px solid var(--border);
+  border-radius:4px;color:var(--text);cursor:pointer;font-size:12px;
+}
+#play-btn:hover{background:#222}
+#play-btn.playing{border-color:var(--orange);color:var(--orange)}
+#frm-ctr{font-size:11px;color:var(--muted);white-space:nowrap;min-width:80px}
+
+/* ── Sidebar ─────────────────────────────────────────── */
+#sb{
+  width:174px;background:var(--surface);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0
+}
+#sb-hdr{
+  display:flex;align-items:center;gap:3px;
+  padding:5px 7px;border-bottom:1px solid var(--border);flex-shrink:0
+}
+#sb-hdr span{font-weight:600;flex:1;font-size:12px}
+.ib{
+  width:26px;height:26px;background:none;border:1px solid var(--border);
+  border-radius:4px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:13px;color:var(--text);flex-shrink:0
+}
+.ib:hover{background:#222}
+#fl{flex:1;overflow-y:auto;padding:5px;display:flex;flex-direction:column;gap:3px}
+.fi{
+  border:2px solid var(--border);border-radius:4px;cursor:pointer;
+  overflow:hidden;position:relative;flex-shrink:0;background:#000
+}
+.fi:hover{border-color:#444}
+.fi.on{border-color:var(--orange)}
+.fi canvas{display:block;width:100%;image-rendering:pixelated}
+.fn{
+  position:absolute;top:2px;left:4px;font-size:10px;font-weight:700;
+  color:var(--orange);text-shadow:0 0 3px #000;pointer-events:none
+}
+
+/* ── Export panel ────────────────────────────────────── */
+#exp{border-top:1px solid var(--border);padding:8px;flex-shrink:0}
+#exp label{display:block;margin-bottom:3px;font-size:11px;color:var(--muted)}
+#fo-input{width:100%;margin-bottom:6px;font:11px/1.4 monospace;
+  background:#111;border:1px solid var(--border);color:var(--text);
+  border-radius:4px;padding:3px 6px}
+.btn-exp{
+  width:100%;padding:6px;background:var(--orange);border:none;border-radius:5px;
+  color:#fff;cursor:pointer;font-size:13px;font-weight:600;
+}
+.btn-exp:hover{opacity:.85}
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <h1>&#128011; Flipper Zero Animator</h1>
+  <div class="hg">
+    <label>Name</label>
+    <input type="text" id="anim-name" value="my_animation" style="width:140px">
+  </div>
+  <div class="hg">
+    <label>FPS</label>
+    <input type="number" id="fps-in" value="4" min="1" max="30">
+  </div>
+  <div class="hg">
+    <button id="play-btn">&#9654; Play</button>
+  </div>
+  <div class="hg" style="gap:5px">
+    <input type="checkbox" id="grid-cb" checked>
+    <label for="grid-cb">Grid</label>
+  </div>
+  <span class="spacer"></span>
+  <span id="coords">—, —</span>
+</div>
+
+<div id="main">
+  <div id="tp">
+    <button class="tb on" id="tb-pencil" title="Pencil  P" onclick="setTool('pencil')">&#9998;</button>
+    <button class="tb" id="tb-eraser" title="Eraser  E" onclick="setTool('eraser')">&#9651;</button>
+    <button class="tb" id="tb-fill"   title="Fill  F"   onclick="setTool('fill')">&#9660;</button>
+    <button class="tb" id="tb-line"   title="Line  L"   onclick="setTool('line')">&#9585;</button>
+    <button class="tb" id="tb-rect"   title="Rect  R"   onclick="setTool('rect')">&#9645;</button>
+    <div class="sep"></div>
+    <div id="sw-white" class="sw on" title="White / on"  onclick="setColor(1)"></div>
+    <div id="sw-black" class="sw"    title="Black / off" onclick="setColor(0)"></div>
+    <div class="sep"></div>
+    <button class="tb" title="Flip horizontal" onclick="doFlipH()">&#8596;</button>
+    <button class="tb" title="Flip vertical"   onclick="doFlipV()">&#8597;</button>
+    <button class="tb" title="Invert"          onclick="doInvert()">&#9689;</button>
+    <button class="tb" title="Clear frame"     onclick="doClear()">&#128465;</button>
+    <div class="sep"></div>
+    <button class="tb" title="Undo  Ctrl+Z"    onclick="doUndo()">&#8617;</button>
+  </div>
+
+  <div id="ea">
+    <canvas id="editor"></canvas>
+    <div id="prev-row">
+      <span class="pl">Preview (2&#215;)</span>
+      <canvas id="preview"></canvas>
+      <button id="play-btn2" onclick="togglePlay()">&#9654; Play</button>
+      <span id="frm-ctr">Frame 1 / 1</span>
+    </div>
+  </div>
+
+  <div id="sb">
+    <div id="sb-hdr">
+      <span>Frames</span>
+      <button class="ib" title="Add frame after"   onclick="addAfter()">+</button>
+      <button class="ib" title="Duplicate frame"   onclick="dupF()">&#8853;</button>
+      <button class="ib" title="Move up"           onclick="moveF(-1)">&#8593;</button>
+      <button class="ib" title="Move down"         onclick="moveF(1)">&#8595;</button>
+      <button class="ib" title="Delete frame"      onclick="delF()">&#10005;</button>
+    </div>
+    <div id="fl"></div>
+    <div id="exp">
+      <label>Frame order (blank = sequential):</label>
+      <input type="text" id="fo-input" placeholder="0 1 2 ...">
+      <button class="btn-exp" onclick="exportZip()">&#11015; Export ZIP</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const W = 128, H = 64, SCALE = 5;
+
+// ── State ──────────────────────────────────────────────────────────────────
+const frames = [];
+let curF = 0;
+let tool = 'pencil';
+let color = 1;
+let drawing = false;
+let drag = null;      // {x,y} start of line/rect drag
+let lastX = 0, lastY = 0;
+let undo = [];        // stack of Uint8Array snapshots for current frame
+let temp = null;      // preview pixels during line/rect drag
+let showGrid = true;
+let playing = false;
+let playTimer = null;
+let playIdx = 0;
+let hx = -1, hy = -1;
+
+// ── DOM ────────────────────────────────────────────────────────────────────
+const eC  = document.getElementById('editor');
+const eX  = eC.getContext('2d');
+const pC  = document.getElementById('preview');
+const pX  = pC.getContext('2d');
+const fl  = document.getElementById('fl');
+const coords = document.getElementById('coords');
+const frmCtr = document.getElementById('frm-ctr');
+const playBtn = document.getElementById('play-btn2');
+
+eC.width  = W * SCALE;
+eC.height = H * SCALE;
+pC.width  = W * 2;
+pC.height = H * 2;
+
+// ── Pixel ops ──────────────────────────────────────────────────────────────
+const newPx = () => new Uint8Array(W * H);
+const clonePx = p => new Uint8Array(p);
+
+function sp(px, x, y, c) {
+  if (x >= 0 && x < W && y >= 0 && y < H) px[y * W + x] = c;
+}
+function gp(px, x, y) {
+  return (x >= 0 && x < W && y >= 0 && y < H) ? px[y * W + x] : -1;
+}
+
+function line(px, x0, y0, x1, y1, c) {
+  let dx = Math.abs(x1-x0), sx = x0<x1?1:-1;
+  let dy = -Math.abs(y1-y0), sy = y0<y1?1:-1;
+  let err = dx+dy;
+  for(;;){
+    sp(px,x0,y0,c);
+    if(x0===x1&&y0===y1) break;
+    const e2=2*err;
+    if(e2>=dy){err+=dy;x0+=sx}
+    if(e2<=dx){err+=dx;y0+=sy}
+  }
+}
+
+function rect(px, x0, y0, x1, y1, c) {
+  const ax=Math.min(x0,x1),bx=Math.max(x0,x1);
+  const ay=Math.min(y0,y1),by=Math.max(y0,y1);
+  for(let x=ax;x<=bx;x++){sp(px,x,ay,c);sp(px,x,by,c)}
+  for(let y=ay+1;y<by;y++){sp(px,ax,y,c);sp(px,bx,y,c)}
+}
+
+function fill(px, sx, sy, c) {
+  const t = gp(px,sx,sy);
+  if(t===c||t<0) return;
+  const stk=[[sx,sy]], seen=new Uint8Array(W*H);
+  while(stk.length){
+    const[x,y]=stk.pop();
+    if(x<0||x>=W||y<0||y>=H||seen[y*W+x]||px[y*W+x]!==t) continue;
+    seen[y*W+x]=1;
+    px[y*W+x]=c;
+    stk.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
+  }
+}
+
+function flipH(px) {
+  for(let y=0;y<H;y++) for(let x=0;x<W>>1;x++){
+    const a=y*W+x, b=y*W+(W-1-x);[px[a],px[b]]=[px[b],px[a]];
+  }
+}
+function flipV(px) {
+  for(let y=0;y<H>>1;y++) for(let x=0;x<W;x++){
+    const a=y*W+x, b=(H-1-y)*W+x;[px[a],px[b]]=[px[b],px[a]];
+  }
+}
+function invert(px){ for(let i=0;i<px.length;i++) px[i]^=1 }
+
+// ── Rendering ──────────────────────────────────────────────────────────────
+function render(thumb=true) {
+  renderEd();
+  renderPrev(frames[curF]||newPx());
+  if(thumb) renderThumbs();
+  frmCtr.textContent = `Frame ${curF+1} / ${frames.length}`;
+}
+
+function renderEd() {
+  const px = temp || frames[curF] || newPx();
+  eX.fillStyle='#000';
+  eX.fillRect(0,0,W*SCALE,H*SCALE);
+  eX.fillStyle='#fff';
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++)
+    if(px[y*W+x]) eX.fillRect(x*SCALE,y*SCALE,SCALE,SCALE);
+
+  // Hover
+  if(!drawing&&hx>=0&&hy>=0){
+    eX.fillStyle=color?'rgba(255,255,255,.45)':'rgba(60,60,60,.7)';
+    eX.fillRect(hx*SCALE,hy*SCALE,SCALE,SCALE);
+  }
+
+  // Grid
+  if(showGrid){
+    eX.strokeStyle='rgba(255,255,255,.07)';
+    eX.lineWidth=.5;
+    for(let x=0;x<=W;x+=8){eX.beginPath();eX.moveTo(x*SCALE,0);eX.lineTo(x*SCALE,H*SCALE);eX.stroke()}
+    for(let y=0;y<=H;y+=8){eX.beginPath();eX.moveTo(0,y*SCALE);eX.lineTo(W*SCALE,y*SCALE);eX.stroke()}
+    eX.strokeStyle='rgba(255,255,255,.13)';eX.lineWidth=1;
+    eX.beginPath();eX.moveTo(W*SCALE/2,0);eX.lineTo(W*SCALE/2,H*SCALE);eX.stroke();
+    eX.beginPath();eX.moveTo(0,H*SCALE/2);eX.lineTo(W*SCALE,H*SCALE/2);eX.stroke();
+  }
+}
+
+function renderPrev(px) {
+  const s=2;
+  pX.fillStyle='#000';pX.fillRect(0,0,W*s,H*s);
+  pX.fillStyle='#fff';
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++)
+    if(px[y*W+x]) pX.fillRect(x*s,y*s,s,s);
+}
+
+function renderThumbs(){
+  const items=[...fl.children];
+  if(items.length!==frames.length){rebuildFL();return}
+  items.forEach((el,i)=>{
+    el.classList.toggle('on',i===curF);
+    drawThumb(el.querySelector('canvas').getContext('2d'),frames[i]);
+  });
+}
+
+function rebuildFL(){
+  fl.innerHTML='';
+  frames.forEach((_,i)=>{
+    const el=document.createElement('div');
+    el.className='fi'+(i===curF?' on':'');
+    el.onclick=()=>selFrame(i);
+    const num=document.createElement('div');num.className='fn';num.textContent=i+1;
+    const c=document.createElement('canvas');c.width=W;c.height=H;
+    c.style.cssText='display:block;width:100%;image-rendering:pixelated';
+    drawThumb(c.getContext('2d'),frames[i]);
+    el.append(num,c);fl.appendChild(el);
+  });
+  updateFOPlaceholder();
+}
+
+function drawThumb(ctx,px){
+  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#fff';
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++)
+    if(px[y*W+x]) ctx.fillRect(x,y,1,1);
+}
+
+// ── Frame management ───────────────────────────────────────────────────────
+function selFrame(i){
+  curF=i;undo=[];
+  [...fl.children].forEach((el,j)=>el.classList.toggle('on',j===i));
+  render();
+}
+
+function addAfter(){
+  saveUndo();
+  frames.splice(curF+1,0,newPx());
+  curF=curF+1;
+  rebuildFL();render();
+}
+
+function dupF(){
+  saveUndo();
+  frames.splice(curF+1,0,clonePx(frames[curF]));
+  curF=curF+1;
+  rebuildFL();render();
+}
+
+function delF(){
+  if(frames.length<=1){doClear();return}
+  saveUndo();
+  frames.splice(curF,1);
+  curF=Math.min(curF,frames.length-1);
+  rebuildFL();render();
+}
+
+function moveF(dir){
+  const t=curF+dir;
+  if(t<0||t>=frames.length) return;
+  [frames[curF],frames[t]]=[frames[t],frames[curF]];
+  curF=t;rebuildFL();render();
+}
+
+function doClear(){saveUndo();frames[curF].fill(0);render()}
+function doFlipH(){saveUndo();flipH(frames[curF]);render()}
+function doFlipV(){saveUndo();flipV(frames[curF]);render()}
+function doInvert(){saveUndo();invert(frames[curF]);render()}
+
+// ── Undo ───────────────────────────────────────────────────────────────────
+function saveUndo(){
+  undo.push(clonePx(frames[curF]));
+  if(undo.length>50) undo.shift();
+}
+function doUndo(){
+  if(!undo.length) return;
+  frames[curF]=undo.pop();render();
+}
+
+// ── Tool / color ───────────────────────────────────────────────────────────
+function setTool(t){
+  tool=t;
+  document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
+  const b=document.getElementById('tb-'+t);if(b)b.classList.add('on');
+  eC.style.cursor=t==='fill'?'cell':'crosshair';
+}
+
+function setColor(c){
+  color=c;
+  document.getElementById('sw-white').classList.toggle('on',c===1);
+  document.getElementById('sw-black').classList.toggle('on',c===0);
+}
+
+// ── Canvas events ──────────────────────────────────────────────────────────
+function xy(e){
+  const r=eC.getBoundingClientRect();
+  const cx=e.touches?e.touches[0].clientX:e.clientX;
+  const cy=e.touches?e.touches[0].clientY:e.clientY;
+  return[Math.floor((cx-r.left)/SCALE),Math.floor((cy-r.top)/SCALE)];
+}
+
+eC.addEventListener('mousedown',e=>{
+  e.preventDefault();
+  const[x,y]=xy(e);
+  startD(x,y,e.button===2?0:color);
+});
+eC.addEventListener('mousemove',e=>{
+  const[x,y]=xy(e);
+  hx=x;hy=y;
+  coords.textContent=`${x}, ${y}`;
+  if(drawing) contD(x,y); else renderEd();
+});
+eC.addEventListener('mouseup',e=>endD(...xy(e)));
+eC.addEventListener('mouseleave',()=>{
+  hx=-1;hy=-1;
+  if(drawing)endD(-1,-1);else renderEd();
+});
+eC.addEventListener('contextmenu',e=>e.preventDefault());
+eC.addEventListener('touchstart',e=>{e.preventDefault();startD(...xy(e),color)},{passive:false});
+eC.addEventListener('touchmove', e=>{e.preventDefault();contD(...xy(e))},{passive:false});
+eC.addEventListener('touchend', e=>{e.preventDefault();endD(-1,-1)});
+
+function startD(x,y,c){
+  drawing=true;drag={x,y};lastX=x;lastY=y;
+  if(tool==='fill'){
+    saveUndo();fill(frames[curF],x,y,c??color);
+    drawing=false;render();return;
+  }
+  if(tool==='pencil'||tool==='eraser'){
+    saveUndo();
+    const col=tool==='eraser'?0:(c??color);
+    sp(frames[curF],x,y,col);render();
+  }
+}
+
+function contD(x,y){
+  if(!drawing)return;
+  if(tool==='pencil'||tool==='eraser'){
+    const col=tool==='eraser'?0:color;
+    line(frames[curF],lastX,lastY,x,y,col);
+    lastX=x;lastY=y;render(false);
+  } else if(tool==='line'){
+    temp=clonePx(frames[curF]);
+    line(temp,drag.x,drag.y,x,y,color);renderEd();
+  } else if(tool==='rect'){
+    temp=clonePx(frames[curF]);
+    rect(temp,drag.x,drag.y,x,y,color);renderEd();
+  }
+}
+
+function endD(x,y){
+  if(!drawing)return;drawing=false;
+  if((tool==='line'||tool==='rect')&&x>=0){
+    saveUndo();
+    if(tool==='line') line(frames[curF],drag.x,drag.y,x,y,color);
+    else              rect(frames[curF],drag.x,drag.y,x,y,color);
+  }
+  temp=null;drag=null;render();
+}
+
+// ── Keyboard ───────────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo();return}
+  switch(e.key.toLowerCase()){
+    case'p':setTool('pencil');break;
+    case'e':setTool('eraser');break;
+    case'f':setTool('fill');break;
+    case'l':setTool('line');break;
+    case'r':setTool('rect');break;
+    case'g':toggleGrid();break;
+    case'x':setColor(color===1?0:1);break;
+    case' ':e.preventDefault();togglePlay();break;
+    case'arrowleft': if(curF>0)selFrame(curF-1);break;
+    case'arrowright':if(curF<frames.length-1)selFrame(curF+1);break;
+  }
+});
+
+// ── Controls ───────────────────────────────────────────────────────────────
+function toggleGrid(){
+  showGrid=!showGrid;
+  document.getElementById('grid-cb').checked=showGrid;
+  renderEd();
+}
+document.getElementById('grid-cb').addEventListener('change',e=>{showGrid=e.target.checked;renderEd()});
+document.getElementById('fps-in').addEventListener('input',e=>{
+  if(playing){clearInterval(playTimer);startPlay()}
+});
+
+// ── Playback ───────────────────────────────────────────────────────────────
+function togglePlay(){
+  playing=!playing;
+  const label=playing?'&#9646;&#9646; Stop':'&#9654; Play';
+  document.getElementById('play-btn').innerHTML=label;
+  document.getElementById('play-btn2').innerHTML=label;
+  if(playing)startPlay();else stopPlay();
+}
+document.getElementById('play-btn').addEventListener('click',togglePlay);
+
+function getFPS(){return Math.max(1,Math.min(30,parseInt(document.getElementById('fps-in').value)||4))}
+
+function getOrder(){
+  const raw=document.getElementById('fo-input').value.trim();
+  if(!raw) return frames.map((_,i)=>i);
+  const o=raw.split(/\s+/).map(Number).filter(n=>Number.isInteger(n)&&n>=0&&n<frames.length);
+  return o.length?o:frames.map((_,i)=>i);
+}
+
+function updateFOPlaceholder(){
+  document.getElementById('fo-input').placeholder=frames.map((_,i)=>i).join(' ');
+}
+
+function startPlay(){
+  const fps=getFPS(), order=getOrder();
+  playIdx=0;
+  playTimer=setInterval(()=>{
+    const f=order[playIdx%order.length];
+    renderPrev(frames[f]);
+    frmCtr.textContent=`Frame ${f+1} / ${frames.length}`;
+    playIdx++;
+  },1000/fps);
+}
+
+function stopPlay(){
+  clearInterval(playTimer);playTimer=null;
+  renderPrev(frames[curF]);
+  frmCtr.textContent=`Frame ${curF+1} / ${frames.length}`;
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────
+function px2bm(px){
+  // 1024 bytes: row-major, LSB first (XBM-compatible)
+  const out=new Uint8Array(W*H>>3);
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++)
+    if(px[y*W+x]) out[y*16+(x>>3)]|=1<<(x&7);
+  return out;
+}
+
+// CRC-32 (IEEE 802.3)
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[i]=c}return t})();
+function crc32(d){let c=0xFFFFFFFF;for(let i=0;i<d.length;i++)c=CRC_T[(c^d[i])&0xFF]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
+
+function buildZip(files){
+  const enc=new TextEncoder();
+  const locs=[],cens=[];let off=0;
+  for(const{name,data}of files){
+    const nb=enc.encode(name),crc=crc32(data),n=data.length;
+    const loc=new Uint8Array(30+nb.length+n);
+    const dv=new DataView(loc.buffer);
+    dv.setUint32(0,0x04034B50,true);dv.setUint16(4,20,true);
+    dv.setUint32(14,crc,true);dv.setUint32(18,n,true);dv.setUint32(22,n,true);
+    dv.setUint16(26,nb.length,true);
+    loc.set(nb,30);loc.set(data,30+nb.length);locs.push(loc);
+
+    const cen=new Uint8Array(46+nb.length);
+    const dc=new DataView(cen.buffer);
+    dc.setUint32(0,0x02014B50,true);dc.setUint16(4,20,true);dc.setUint16(6,20,true);
+    dc.setUint32(16,crc,true);dc.setUint32(20,n,true);dc.setUint32(24,n,true);
+    dc.setUint16(28,nb.length,true);dc.setUint32(42,off,true);
+    cen.set(nb,46);cens.push(cen);off+=loc.length;
+  }
+  const cdOff=off,cdSz=cens.reduce((s,c)=>s+c.length,0);
+  const eocd=new Uint8Array(22);const de=new DataView(eocd.buffer);
+  de.setUint32(0,0x06054B50,true);de.setUint16(8,files.length,true);
+  de.setUint16(10,files.length,true);de.setUint32(12,cdSz,true);de.setUint32(16,cdOff,true);
+  const total=off+cdSz+eocd.length,out=new Uint8Array(total);
+  let pos=0;
+  for(const p of locs){out.set(p,pos);pos+=p.length}
+  for(const p of cens){out.set(p,pos);pos+=p.length}
+  out.set(eocd,pos);return out;
+}
+
+function exportZip(){
+  const name=(document.getElementById('anim-name').value.trim()||'my_animation').replace(/[^a-zA-Z0-9_-]/g,'_');
+  const fps=getFPS(),order=getOrder();
+  const enc=new TextEncoder();
+  const manifest=[
+    'Filetype: Flipper Animation','Version: 1','',
+    `Frames count: ${frames.length}`,`Frame rate: ${fps}`,
+    `Duration: 3600`,`Active cycles: 11`,`Passive cycles: 4`,
+    `Frame order: ${order.join(' ')}`,`Bubble slots count: 0`,
+  ].join('\n');
+
+  const readme=`Flipper Zero Animation: ${name}
+Generated by Flipper Zero Animator  (flipper-animator.html)
+
+== Install ==
+
+1. Copy "${name}/" folder to your SD card:
+   SD:/dolphin/animations/${name}/
+
+2. Edit SD:/dolphin/manifest.txt  — add this block:
+
+   Name: ${name}
+   Min butthurt: 0
+   Max butthurt: 14
+   Min level: 0
+   Max level: 30
+   Weight: 3
+
+3. Reboot your Flipper Zero.  The animation appears on idle.
+
+== Tips ==
+
+• Weight controls selection frequency vs other animations.
+• Min/Max level unlocks this animation at certain XP thresholds.
+• Adjust Active/Passive cycles in manifest.txt to control loop count.
+• Frame order allows ping-pong playback without duplicating frames,
+  e.g. "0 1 2 3 2 1" bounces frames 0‒3 back and forth.
+
+Display: 128 × 64 px, 1-bit monochrome OLED.
+`;
+
+  const zipFiles=[
+    {name:`${name}/manifest.txt`,data:enc.encode(manifest)},
+    ...frames.map((px,i)=>({name:`${name}/frame_${i}.bm`,data:px2bm(px)})),
+    {name:'README.txt',data:enc.encode(readme)},
+  ];
+
+  const blob=new Blob([buildZip(zipFiles)],{type:'application/zip'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=`${name}.zip`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),6000);
+}
+
+// ── Keyboard shortcut cheatsheet on ? ────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='?'&&e.target.tagName!=='INPUT'){
+    alert(`Flipper Zero Animator — Shortcuts
+
+P  Pencil        E  Eraser
+F  Fill          L  Line
+R  Rectangle     G  Toggle grid
+X  Swap color    Space  Play/Pause
+
+Ctrl+Z  Undo
+← / →  Prev / Next frame
+
+Right-click on canvas = erase
+Frame list: + Add  ⊕ Dup  ↑↓ Reorder  ✕ Delete`);
+  }
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+(function init(){
+  frames.push(newPx());
+  rebuildFL();
+  render();
+})();
+</script>
+</body>
+</html>
