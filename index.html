@@ -547,6 +547,20 @@ input,textarea{font-family:inherit;}
 .prbanner .pb-s{font-size:14.5px;font-weight:700;margin-top:3px;}
 
 /* ---------- toast ---------- */
+.whatsnew{
+  position:fixed;left:12px;right:12px;bottom:calc(var(--tab-safe) + 12px);z-index:48;
+  display:flex;align-items:center;gap:10px;
+  background:var(--accent-wash);border:1px solid color-mix(in oklch,var(--accent) 34%,transparent);
+  border-radius:var(--r-lg);padding:12px 10px 12px 15px;
+  box-shadow:0 10px 26px oklch(0.25 0.03 55 / .18);
+  visibility:hidden;opacity:0;transform:translateY(14px);pointer-events:none;
+  transition:transform .45s cubic-bezier(.2,.9,.2,1),opacity .35s;
+}
+.whatsnew.show{visibility:visible;opacity:1;transform:translateY(0);pointer-events:auto;}
+.wn-txt{flex:1;font-size:13.5px;line-height:1.35;color:var(--ink);font-weight:600;}
+.wn-txt b{font-weight:800;}
+.wn-go{flex:none;background:var(--accent);color:#fff;border:none;border-radius:999px;padding:8px 15px;font-size:13px;font-weight:750;cursor:pointer;}
+.wn-x{flex:none;background:transparent;border:none;color:var(--muted);font-size:21px;line-height:1;padding:2px 7px;cursor:pointer;}
 .toast{
   position:fixed;left:50%;transform:translateX(-50%) translateY(10px);
   bottom:calc(var(--tab-safe) + 16px);z-index:50;
@@ -831,6 +845,11 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 <div id="confetti"></div>
 <div class="prbanner" id="prbanner"><div class="pb-t">New PR! 🎉</div><div class="pb-s" id="prbannerText"></div></div>
 <button class="update-fab" id="updateFab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.85-3.36L23 10M1 14l4.65 4.36A9 9 0 0020.5 15"/></svg> Update</button>
+<div class="whatsnew" id="whatsNew">
+  <div class="wn-txt"><b>Updated!</b> Check the <b>Progress</b> tab for what&#39;s new.</div>
+  <button class="wn-go" id="wnGo">View</button>
+  <button class="wn-x" id="wnClose" aria-label="Dismiss">&times;</button>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -843,7 +862,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.07.09a";
+const APP_VERSION = "2026.07.09b";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -2085,6 +2104,11 @@ document.getElementById("updateFab").onclick=()=>{
   saveDraft(); toast("Updating…");
   setTimeout(()=>location.replace(location.pathname+"?v="+Date.now()),250);
 };
+function showWhatsNew(){ const b=document.getElementById("whatsNew"); if(!b) return; b.classList.add("show"); clearTimeout(showWhatsNew._t); showWhatsNew._t=setTimeout(hideWhatsNew,11000); }
+function hideWhatsNew(){ const b=document.getElementById("whatsNew"); if(b) b.classList.remove("show"); }
+(function(){ const g=document.getElementById("wnGo"), x=document.getElementById("wnClose");
+  if(g) g.onclick=()=>{ switchTab("records"); hideWhatsNew(); };
+  if(x) x.onclick=hideWhatsNew; })();
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ ensureAudio(); checkForUpdate();
   if(document.getElementById("rest").classList.contains("show")) tickRest(); tickClock(); } });
 
@@ -2129,6 +2153,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
   document.getElementById("unitToggle").textContent="Switch to "+(unit==="lb"?"kg":"lb");
   document.getElementById("appVer").textContent=APP_VERSION;
   if(DEMO) document.getElementById("barSub").textContent="Sample data preview";
+  try{ if(new URLSearchParams(location.search).has("v")){ setTimeout(showWhatsNew,600); history.replaceState(null,"",location.pathname+(DEMO?"?demo=1":"")); } }catch(e){}
   renderRestSeg(); renderAlertList(); renderAlertVol(); renderBgSwitch(); renderSync(); renderPlan();
   if(PERSONAL_MESSAGE && PERSONAL_MESSAGE.trim()){
     document.getElementById("personalMsg").style.display="block";
