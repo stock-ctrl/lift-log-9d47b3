@@ -350,6 +350,19 @@ input,textarea{font-family:inherit;}
 .pr-chart.open{display:block;animation:fade .2s var(--ease);}
 
 /* ---------- bodyweight card ---------- */
+.movers-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:4px 16px 8px;}
+.mv-prs{display:flex;align-items:center;gap:9px;padding:13px 0 11px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--muted);font-weight:650;}
+.mv-prs-n{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 7px;border-radius:999px;background:color-mix(in oklch,var(--accent) 16%,transparent);color:var(--accent);font-weight:800;font-size:14px;}
+.mv-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+.mv-row:last-child{border-bottom:0;}
+.mv-nm{font-weight:750;font-size:15px;}
+.mv-fig{display:flex;align-items:baseline;gap:6px;white-space:nowrap;}
+.mv-from{color:var(--faint);font-weight:650;font-size:14px;}
+.mv-arw{color:var(--accent);font-weight:800;}
+.mv-to{color:var(--ink);font-weight:800;font-size:18px;letter-spacing:-.01em;}
+.mv-e1{color:var(--accent);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-left:2px;}
+.mv-more{padding:10px 0 3px;font-size:12.5px;color:var(--muted);font-weight:600;}
+.mv-empty{padding:18px 2px;color:var(--muted);font-size:14px;line-height:1.5;}
 .bw-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;}
 .bw-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;min-height:30px;}
 .bw-now{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1;}
@@ -719,8 +732,8 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 
   <!-- ===================== PROGRESS ===================== -->
   <section class="view" id="view-records">
-    <h2 class="h-sec" style="margin-top:8px;">Bodyweight</h2>
-    <div id="bwCard" class="bw-card"></div>
+    <h2 class="h-sec" style="margin-top:8px;">On the up</h2>
+    <div id="moversCard" class="movers-card"></div>
 
     <h2 class="h-sec">Personal Records</h2>
     <p class="note-txt" style="margin-top:0;">Heaviest set per lift. <b>e1RM</b> is your estimated one-rep max, so you can compare days at any reps. Tap a lift to see its progress chart.</p>
@@ -830,7 +843,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.06.24h";
+const APP_VERSION = "2026.07.09a";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -1412,9 +1425,45 @@ function exerciseSeries(name){
   return out;
 }
 
+/* ======================= PROGRESS: on the up ======================= */
+function renderMovers(){
+  const card=document.getElementById("moversCard"); if(!card) return;
+  card.innerHTML="";
+  const ws=loadWorkouts();
+  if(!ws.length){ card.innerHTML='<div class="mv-empty">Your progress shows up here as you train. Log a lift on two different days and watch it climb.</div>'; return; }
+  const latestDate=ws.reduce((m,w)=> w.date>m?w.date:m, "");
+  const names=new Set(); ws.forEach(w=>w.exercises.forEach(e=>names.add(e.name.trim())));
+  const movers=[]; let prCount=0;
+  names.forEach(nm=>{
+    const s=exerciseSeries(nm);
+    if(s.length>=2){
+      const first=s[0].value, lastPt=s[s.length-1];
+      const priorMax=Math.max.apply(null, s.slice(0,-1).map(pt=>pt.value));
+      if(lastPt.value>priorMax && lastPt.date===latestDate) prCount++;
+      movers.push({ name:nm, first:Math.round(first), last:Math.round(lastPt.value), gain:lastPt.value-first });
+    }
+  });
+  const up=movers.filter(m=>m.gain>0).sort((a,b)=>b.gain-a.gain);
+  if(!up.length && !prCount){ card.innerHTML='<div class="mv-empty">Your progress shows up here as you train. Repeat a lift on another day and its climb appears here.</div>'; return; }
+  if(prCount){
+    const pr=document.createElement("div"); pr.className="mv-prs";
+    pr.innerHTML='<span class="mv-prs-n">'+prCount+'</span> new '+(prCount===1?'personal record':'personal records')+' in your latest workout';
+    card.appendChild(pr);
+  }
+  const list=document.createElement("div"); list.className="mv-list";
+  up.slice(0,5).forEach(m=>{
+    const row=document.createElement("div"); row.className="mv-row";
+    row.innerHTML='<div class="mv-nm">'+escapeHtml(m.name)+'</div>'+
+      '<div class="mv-fig num"><span class="mv-from">'+m.first+'</span><span class="mv-arw">&#8594;</span><span class="mv-to">'+m.last+'</span><span class="mv-e1">e1RM</span></div>';
+    list.appendChild(row);
+  });
+  card.appendChild(list);
+  if(up.length>5){ const more=document.createElement("div"); more.className="mv-more"; more.textContent="+"+(up.length-5)+" more climbing \u2014 see Personal Records below"; card.appendChild(more); }
+}
+
 /* ======================= PROGRESS: records ======================= */
 function renderRecords(){
-  renderBodyweight();
+  renderMovers();
   const wrap=document.getElementById("recordsList");
   const best={};
   loadWorkouts().forEach(w=>w.exercises.forEach(e=>{
