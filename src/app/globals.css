@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+:root {
+  --iron:  #1F1B18;
+  --steel: #46505A;
+  --brass: #BE8A34;
+  --bone:  #E8E2D8;
+  --dust:  #9A9187;
+}
+
+@theme inline {
+  --color-iron:  var(--iron);
+  --color-steel: var(--steel);
+  --color-brass: var(--brass);
+  --color-bone:  var(--bone);
+  --color-dust:  var(--dust);
+
+  --font-display: var(--font-archivo);
+  --font-body:    var(--font-public-sans);
+  --font-data:    var(--font-archivo-narrow);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--iron);
+  color: var(--bone);
+}
+
+body {
+  background: var(--iron);
+  color: var(--bone);
+  font-family: var(--font-public-sans, 'Public Sans', sans-serif);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 3px;
+}
+
+/* Marquee animation */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 40s linear infinite;
+}
+
+.marquee-track:hover,
+.marquee-track:focus-within {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
+/* Rating count-up animation */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes star-fill {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes headline-rise {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-rating {
+  animation: count-up 0.4s ease-out 0.1s both;
+}
+
+.animate-star-1 { animation: star-fill 0.15s ease-out 0.40s both; }
+.animate-star-2 { animation: star-fill 0.15s ease-out 0.52s both; }
+.animate-star-3 { animation: star-fill 0.15s ease-out 0.64s both; }
+.animate-star-4 { animation: star-fill 0.15s ease-out 0.76s both; }
+.animate-star-5 { animation: star-fill 0.15s ease-out 0.88s both; }
+
+.animate-headline {
+  animation: headline-rise 0.5s ease-out 0.55s both;
+}
+
+.animate-cta {
+  animation: headline-rise 0.5s ease-out 0.75s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rating,
+  .animate-star-1,
+  .animate-star-2,
+  .animate-star-3,
+  .animate-star-4,
+  .animate-star-5,
+  .animate-headline,
+  .animate-cta {
+    animation: none;
+  }
+}
