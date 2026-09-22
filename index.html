@@ -1522,6 +1522,9 @@ const EX_RULES = [
   [/cuban press/i,                                              ["rear_delts"], ["side_delts","traps"]],
   [/(leg|hamstring|nordic|lying)\s*(hamstring)?\s*curl/i,       ["hamstrings"], []],
   [/seated hamstring/i,                                         ["hamstrings"], []],
+  // Hannah's "Bicep Cable Pull": a neutral-grip overhead cable pull (per Stock),
+  // lats and biceps together. Must beat the general bicep rule.
+  [/bicep cable pull/i,                                         ["upper_back","biceps"], ["forearms","rear_delts"]],
   [/reverse[- ]?(grip )?curl|pronated curl/i,                   ["forearms"], ["biceps"]],
   [/zottman|hammer curl|pinwheel/i,                             ["biceps","forearms"], []],
   [/bicep|curl|spider|bayesian|concentration/i,                 ["biceps"], ["forearms"]],
