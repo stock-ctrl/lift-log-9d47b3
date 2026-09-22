@@ -879,7 +879,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.09.21b";
+const APP_VERSION = "2026.09.21c";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -1507,38 +1507,59 @@ function renderMovers(){
      "Chest-Supported Row"       must beat "chest"          -> not chest
      "Trap Bar Deadlift"         must beat "trap"           -> not trapezius
      "Cuban / French press"      must beat "press"          -> not chest
-   Checked against every exercise name in Trevor's log. Secondary muscles
-   shade the map at half a set. */
+   Reviewed 2026-09-21 against Athlean-X exercise guides (quad-dominant squats
+   and presses lead with quads, rack pulls are glutes/hams, tibialis maps to no
+   region) and checked against every exercise name in Hannah's and Trevor's logs.
+   Secondary muscles shade the map at half a set. */
 const EX_RULES = [
-  [/tricep|skull ?crusher|pushdown|tate press|french press|dip bar/i, ["triceps"], []],
-  [/(db|dumbbell)\s+kickback/i,                                ["triceps"], []],
-  [/close-?grip bench/i,                                        ["triceps","chest"], ["front_delts"]],
-  [/chest dip|weighted .*dip|\bdips?\b/i,                       ["chest"], ["triceps"]],
+  // Specific variants first; the general pattern for each family comes after.
+  [/tibialis/i,                                                 [], []],   // front of shin: no region on the map
+  [/dip bar|tricep dip/i,                                       ["triceps"], ["chest","front_delts"]],
+  [/tricep|skull ?crusher|pushdown|tate press|french press/i,   ["triceps"], []],
+  [/(db|dumbbell)\s+kickback/i,                                 ["triceps"], []],
+  [/close-?grip bench/i,                                        ["triceps"], ["chest","front_delts"]],
+  [/chest dip|weighted .*dip|\bdips?\b/i,                       ["chest"], ["triceps","front_delts"]],
   [/cuban press/i,                                              ["rear_delts"], ["side_delts","traps"]],
-  [/(leg|hamstring|nordic|lying)\s*(hamstring)?\s*curl/i,      ["hamstrings"], []],
+  [/(leg|hamstring|nordic|lying)\s*(hamstring)?\s*curl/i,       ["hamstrings"], []],
   [/seated hamstring/i,                                         ["hamstrings"], []],
   [/reverse[- ]?(grip )?curl|pronated curl/i,                   ["forearms"], ["biceps"]],
-  [/zottman/i,                                                  ["biceps","forearms"], []],
+  [/zottman|hammer curl|pinwheel/i,                             ["biceps","forearms"], []],
   [/bicep|curl|spider|bayesian|concentration/i,                 ["biceps"], ["forearms"]],
-  [/calf|tibialis|soleus/i,                                     ["calves"], []],
+  [/calf|soleus/i,                                              ["calves"], []],
   [/abduct/i,                                                   ["abductors"], ["glutes"]],
   [/adduct/i,                                                   ["adductors"], []],
   [/hip thrust|glute\s*bridge|kickback|pull-?through/i,         ["glutes"], ["hamstrings"]],
   [/trap bar dead ?lift/i,          ["quads","glutes","hamstrings"], ["traps","lower_back","forearms"]],
   [/romanian|rdl|romain/i,                                      ["hamstrings","glutes"], ["lower_back"]],
-  [/rack pull/i,                                                ["lower_back","traps"], ["hamstrings","forearms"]],
+  [/rack pull/i,                    ["glutes","hamstrings","lower_back"], ["traps","upper_back","forearms"]],
   [/dead ?lift/i,                   ["hamstrings","glutes","lower_back"], ["traps","quads","forearms"]],
-  [/back extension|hyper ?ext|good morning/i,                   ["lower_back"], ["glutes","hamstrings"]],
+  [/back extension|hyper ?ext|good morning/i,                   ["lower_back","glutes"], ["hamstrings"]],
   [/leg extension/i,                                            ["quads"], []],
-  [/leg press/i,                                                ["quads","glutes"], ["hamstrings"]],
-  [/squat|wall sit|box jump/i,                                  ["quads","glutes"], ["hamstrings","adductors","abs"]],
+  [/leg press.*(high|wide)/i,                                   ["quads","glutes"], ["hamstrings","adductors"]],
+  [/leg press.*(low|narrow)/i,                                  ["quads"], ["glutes"]],
+  [/leg press/i,                                                ["quads"], ["glutes","hamstrings"]],
+  [/sissy/i,                                                    ["quads"], []],
+  [/spanish squat|wall sit/i,                                   ["quads"], ["glutes"]],
+  [/front squat|heel-?elevated|goblet squat/i,                  ["quads"], ["glutes","adductors","abs"]],
+  [/cyclist|belt squat/i,                                       ["quads"], ["glutes","adductors"]],
+  [/split squat/i,                  ["quads","glutes"], ["hamstrings","adductors","abductors","abs"]],
+  [/box jump/i,                                                 ["quads","glutes"], ["calves","hamstrings"]],
+  [/squat/i,                                                    ["quads","glutes"], ["hamstrings","adductors","abs"]],
+  [/lateral lunge/i,                                            ["quads","glutes","adductors"], ["hamstrings"]],
   [/lunge|step-?up/i,                                           ["quads","glutes"], ["hamstrings"]],
-  [/upright row/i,                                              ["traps","side_delts"], []],
+  [/upright row/i,                                              ["side_delts","traps"], ["rear_delts"]],
   [/shrug/i,                                                    ["traps"], []],
-  [/face pull|rear delt|pull-?apart|y-?raise/i,                 ["rear_delts"], ["traps","upper_back"]],
-  [/row|pulldown|pull-?up|chin-?up|pullover|straight-?arm/i,    ["upper_back"], ["biceps","rear_delts","forearms"]],
+  [/y-?raise/i,                                                 ["traps"], ["rear_delts","side_delts"]],
+  [/face pull|rear delt|pull-?apart/i,                          ["rear_delts"], ["traps","upper_back"]],
+  [/pullover/i,                                                 ["upper_back"], ["chest","triceps"]],
+  [/straight-?arm/i,                                            ["upper_back"], ["triceps","rear_delts"]],
+  [/^(?!.*(incline|chest-supported)).*(barbell row|pendlay)/i,  ["upper_back"], ["traps","rear_delts","biceps","lower_back"]],
+  [/row|pulldown|pull-?up|chin-?up/i,                           ["upper_back"], ["biceps","rear_delts","forearms"]],
   [/lateral raise|side raise|lat raise/i,                       ["side_delts"], ["traps"]],
-  [/overhead press|\bohp\b|shoulder press|arnold|z-?press|military/i, ["front_delts"], ["side_delts","triceps","traps"]],
+  [/arnold/i,                                                   ["front_delts","side_delts"], ["rear_delts","triceps","traps"]],
+  [/z-?press/i,                                                 ["front_delts"], ["side_delts","triceps","traps","abs"]],
+  [/overhead press|\bohp\b|shoulder press|military/i,           ["front_delts"], ["side_delts","triceps","traps"]],
+  [/incline.*(60|steep)/i,                                      ["chest","front_delts"], ["triceps"]],
   [/bench|chest|fly|flye|crossover|guillotine|press/i,          ["chest"], ["front_delts","triceps"]],
   [/plank|crunch|sit-?up|ab wheel|leg raise|russian twist|oblique|woodchop/i, ["abs"], ["obliques"]],
   [/wrist|farmer/i,                                             ["forearms"], []],
@@ -1603,7 +1624,7 @@ function renderMuscleMap(){
     inWin.push(w);
     (w.exercises||[]).forEach(e=>{
       const t=targetsFor(e.name), n=(e.sets||[]).length;
-      if(!t || !n) return;
+      if(!t || !n || !t.primary.length) return;   // e.g. tibialis: no region
       t.primary.forEach(m=>{ worked[m]+=n; });
       const g=groupOf(t.primary[0]); groupSets[g]=(groupSets[g]||0)+n;
       t.secondary.forEach(m=>{ worked[m]+=n*0.5; });
@@ -1617,14 +1638,18 @@ function renderMuscleMap(){
     '<button type="button" id="mmNext" aria-label="Next week"'+(mmWeekOffset>=0?" disabled":"")+'>\u203a</button></div>';
   const max=Math.max(0,...Object.values(worked));
   if(!max){
-    h+='<div class="mm-empty">No workouts logged in these 7 days.</div>';
+    const last=loadWorkouts().map(w=>w.date).filter(d=>d && d<from).sort().pop();
+    h+='<div class="mm-empty">No workouts logged in these 7 days.'+
+      (last ? '<br>Last workout: '+mkDate(last).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})+'. Tap \u2039 to go back.' : '')+'</div>';
   } else {
     const intensityOf=slug=>{ const ms=POLY_SHARED[slug]; if(!ms) return null; return Math.max(...ms.map(m=>worked[m]||0))/max; };
     h+='<div class="mm-figs"><div class="mm-fig">'+bodySvg(BODY_POLY.front,intensityOf)+'<div class="mm-cap">Front</div></div>'+
        '<div class="mm-fig">'+bodySvg(BODY_POLY.back,intensityOf)+'<div class="mm-cap">Back</div></div></div>';
     const groups=Object.entries(groupSets).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]).slice(0,3);
     if(groups.length) h+='<div class="mm-top">Most worked: '+groups.map(([g,n])=>g+' '+n+' sets').join(' \u00b7 ')+'</div>';
-    const days=inWin.sort((a,b)=>a.date<b.date?-1:1).map(w=>mkDate(w.date).toLocaleDateString(undefined,{weekday:"short"})+' '+escapeHtml(w.name||"Workout"));
+    const days=inWin.sort((a,b)=>a.date<b.date?-1:1).map(w=>{ const nm=w.name||"Workout";
+      // skip the day prefix when the name already says it ("Monday - Leg day")
+      return (/^(mon|tue|wed|thu|fri|sat|sun)/i.test(nm.trim()) ? "" : mkDate(w.date).toLocaleDateString(undefined,{weekday:"short"})+' ')+escapeHtml(nm); });
     h+='<div class="mm-from">From '+inWin.length+' workout'+(inWin.length===1?'':'s')+': '+days.join(' \u00b7 ')+'</div>';
   }
   host.innerHTML=h;
