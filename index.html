@@ -375,6 +375,7 @@ input,textarea{font-family:inherit;}
 .mm-fig svg{width:100%;height:auto;max-height:270px;}
 .mm-cap{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:4px;}
 .mm-top{font-size:13.5px;color:var(--ink-2);font-weight:600;text-align:center;margin-top:10px;line-height:1.5;}
+.mm-from{font-size:12px;color:var(--muted);font-weight:600;text-align:center;margin-top:6px;line-height:1.5;}
 .mm-empty{padding:26px 4px;text-align:center;color:var(--muted);font-size:14px;}
 .bw-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;}
 .bw-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;min-height:30px;}
@@ -878,7 +879,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.09.21";
+const APP_VERSION = "2026.09.21b";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -1581,12 +1582,16 @@ function bodySvg(rows, intensityOf){
   });
   return '<svg viewBox="0 0 100 200" role="img" aria-label="Muscles worked">'+g+'</svg>';
 }
-let mmWeekOffset=0;   // 0 = this week, -1 = last week...
+// Rolling 7-day windows ending today (0), then the 7 days before that (-1)...
+// Calendar weeks read as "broken" early in the week: on a Monday the map only
+// showed that morning's session, so Saturday's deadlifts looked missing.
+let mmWeekOffset=0;
 function renderMuscleMap(){
   const host=document.getElementById("muscleMap"); if(!host) return;
-  const mon=mondayOf(new Date()); mon.setDate(mon.getDate()+mmWeekOffset*7);
-  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const sun=new Date(); sun.setHours(0,0,0,0); sun.setDate(sun.getDate()+mmWeekOffset*7);
+  const mon=new Date(sun); mon.setDate(sun.getDate()-6);
   const from=isoOf(mon), to=isoOf(sun);
+  const inWin=[];
   // worked = shading (primary + half credit for secondary).
   // groupSets = the "Most worked" line: each exercise's sets counted ONCE, under
   // the group of its main muscle, so a squat isn't counted for quads AND glutes.
@@ -1595,6 +1600,7 @@ function renderMuscleMap(){
   const groupOf=m=>Object.keys(GROUP_MUSCLES).find(g=>GROUP_MUSCLES[g].includes(m));
   loadWorkouts().forEach(w=>{
     if(!w.date || w.date<from || w.date>to) return;
+    inWin.push(w);
     (w.exercises||[]).forEach(e=>{
       const t=targetsFor(e.name), n=(e.sets||[]).length;
       if(!t || !n) return;
@@ -1604,20 +1610,22 @@ function renderMuscleMap(){
     });
   });
   const fmt=d=>d.toLocaleDateString(undefined,{month:"short",day:"numeric"});
-  const label=mmWeekOffset===0?"This week":(mmWeekOffset===-1?"Last week":fmt(mon)+" \u2013 "+fmt(sun));
+  const label=mmWeekOffset===0?"Last 7 days":(mmWeekOffset===-1?"The 7 days before":fmt(mon)+" \u2013 "+fmt(sun));
   const sub=mmWeekOffset>=-1?fmt(mon)+" \u2013 "+fmt(sun):"";
   let h='<div class="mm-nav"><button type="button" id="mmPrev" aria-label="Previous week">\u2039</button>'+
     '<div class="mm-lbl">'+label+(sub?'<small>'+sub+'</small>':'')+'</div>'+
     '<button type="button" id="mmNext" aria-label="Next week"'+(mmWeekOffset>=0?" disabled":"")+'>\u203a</button></div>';
   const max=Math.max(0,...Object.values(worked));
   if(!max){
-    h+='<div class="mm-empty">No workouts logged this week.</div>';
+    h+='<div class="mm-empty">No workouts logged in these 7 days.</div>';
   } else {
     const intensityOf=slug=>{ const ms=POLY_SHARED[slug]; if(!ms) return null; return Math.max(...ms.map(m=>worked[m]||0))/max; };
     h+='<div class="mm-figs"><div class="mm-fig">'+bodySvg(BODY_POLY.front,intensityOf)+'<div class="mm-cap">Front</div></div>'+
        '<div class="mm-fig">'+bodySvg(BODY_POLY.back,intensityOf)+'<div class="mm-cap">Back</div></div></div>';
     const groups=Object.entries(groupSets).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]).slice(0,3);
     if(groups.length) h+='<div class="mm-top">Most worked: '+groups.map(([g,n])=>g+' '+n+' sets').join(' \u00b7 ')+'</div>';
+    const days=inWin.sort((a,b)=>a.date<b.date?-1:1).map(w=>mkDate(w.date).toLocaleDateString(undefined,{weekday:"short"})+' '+escapeHtml(w.name||"Workout"));
+    h+='<div class="mm-from">From '+inWin.length+' workout'+(inWin.length===1?'':'s')+': '+days.join(' \u00b7 ')+'</div>';
   }
   host.innerHTML=h;
   document.getElementById("mmPrev").onclick=()=>{ mmWeekOffset--; renderMuscleMap(); };
@@ -1667,7 +1675,9 @@ function updateStats(){
   if(!ws.length){ el.textContent="No workouts logged yet. Today's the day."; return; }
   const sets=ws.reduce((n,w)=>n+w.exercises.reduce((m,e)=>m+e.sets.length,0),0);
   const vol=ws.reduce((t,w)=>t+w.exercises.reduce((x,e)=>x+e.sets.reduce((y,s)=>y+num(s.weight)*num(s.reps),0),0),0);
-  el.innerHTML=ws.length+" workouts · "+sets+" sets · "+fmtVol(vol)+" total volume.<br>Keep showing up, "+DAD_NAME+".";
+  const u=(unit==="kg")?"kg":"lbs";
+  el.innerHTML=ws.length.toLocaleString()+" workouts<br>"+sets.toLocaleString()+" total sets<br>"+
+    Math.round(vol).toLocaleString()+" "+u+" total weight lifted<br>Keep showing up, "+DAD_NAME+".";
 }
 function renderRestSeg(){
   const seg=document.getElementById("restSeg"); if(!seg) return;
