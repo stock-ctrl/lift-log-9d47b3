@@ -879,7 +879,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.09.21c";
+const APP_VERSION = "2026.09.30e";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -1514,8 +1514,10 @@ function renderMovers(){
 const EX_RULES = [
   // Specific variants first; the general pattern for each family comes after.
   [/tibialis/i,                                                 [], []],   // front of shin: no region on the map
-  [/dip bar|tricep dip/i,                                       ["triceps"], ["chest","front_delts"]],
-  [/tricep|skull ?crusher|pushdown|tate press|french press/i,   ["triceps"], []],
+  [/dip bar|tricep dip|bench dip/i,                                       ["triceps"], ["chest","front_delts"]],
+  [/tricep|skull ?crusher|push[- ]?down|tate press|french press/i, ["triceps"], []],
+  [/jm press/i,                                                 ["triceps"], ["chest","front_delts"]],
+  [/(diamond|close[- ]?grip) push[- ]?up/i,                     ["triceps"], ["chest","front_delts"]],
   [/(db|dumbbell)\s+kickback/i,                                 ["triceps"], []],
   [/close-?grip bench/i,                                        ["triceps"], ["chest","front_delts"]],
   [/chest dip|weighted .*dip|\bdips?\b/i,                       ["chest"], ["triceps","front_delts"]],
@@ -1525,7 +1527,7 @@ const EX_RULES = [
   // Hannah's "Bicep Cable Pull": a neutral-grip overhead cable pull (per Stock),
   // lats and biceps together. Must beat the general bicep rule.
   [/bicep cable pull/i,                                         ["upper_back","biceps"], ["forearms","rear_delts"]],
-  [/reverse[- ]?(grip )?curl|pronated curl/i,                   ["forearms"], ["biceps"]],
+  [/reverse\b.*\bcurl|pronated curl/i,                          ["forearms"], ["biceps"]],
   [/zottman|hammer curl|pinwheel/i,                             ["biceps","forearms"], []],
   [/bicep|curl|spider|bayesian|concentration/i,                 ["biceps"], ["forearms"]],
   [/calf|soleus/i,                                              ["calves"], []],
@@ -1557,13 +1559,15 @@ const EX_RULES = [
   [/pullover/i,                                                 ["upper_back"], ["chest","triceps"]],
   [/straight-?arm/i,                                            ["upper_back"], ["triceps","rear_delts"]],
   [/^(?!.*(incline|chest-supported)).*(barbell row|pendlay)/i,  ["upper_back"], ["traps","rear_delts","biceps","lower_back"]],
-  [/row|pulldown|pull-?up|chin-?up/i,                           ["upper_back"], ["biceps","rear_delts","forearms"]],
+  [/row|pull[- ]?down|pull[- ]?up|chin[- ]?up/i,                           ["upper_back"], ["biceps","rear_delts","forearms"]],
   [/lateral raise|side raise|lat raise/i,                       ["side_delts"], ["traps"]],
   [/arnold/i,                                                   ["front_delts","side_delts"], ["rear_delts","triceps","traps"]],
   [/z-?press/i,                                                 ["front_delts"], ["side_delts","triceps","traps","abs"]],
   [/overhead press|\bohp\b|shoulder press|military/i,           ["front_delts"], ["side_delts","triceps","traps"]],
   [/incline.*(60|steep)/i,                                      ["chest","front_delts"], ["triceps"]],
-  [/bench|chest|fly|flye|crossover|guillotine|press/i,          ["chest"], ["front_delts","triceps"]],
+  [/\bfly\b|flye|crossover/i,                                  ["chest"], ["front_delts"]],   // flies barely use triceps
+  [/push[- ]?up/i,                                              ["chest"], ["triceps","front_delts"]],
+  [/bench|chest|guillotine|press/i,                            ["chest"], ["front_delts","triceps"]],
   [/plank|crunch|sit-?up|ab wheel|leg raise|russian twist|oblique|woodchop/i, ["abs"], ["obliques"]],
   [/wrist|farmer/i,                                             ["forearms"], []],
 ];
