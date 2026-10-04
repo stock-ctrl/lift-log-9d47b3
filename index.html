@@ -247,7 +247,25 @@ input,textarea{font-family:inherit;}
 .set-row.done .check{animation:pop .28s var(--ease);}
 @keyframes pop{0%{transform:scale(.7)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
 
-.set-foot{display:flex;gap:8px;margin:8px 0 12px;}
+.set-foot{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px;}
+/* superset: a toggle on each lift links it to the lift below. Display only -
+   sets, rest timer, history and records are unchanged. */
+.ss-tog{display:flex;align-items:center;gap:6px;padding:11px 10px;border:1px dashed var(--line-2);border-radius:11px;
+  background:none;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.ss-tog .ss-sw{position:relative;width:28px;height:17px;border-radius:9px;background:var(--line-2);transition:background .2s;flex-shrink:0;}
+.ss-tog .ss-sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:transform .2s;}
+.ss-tog.on{border-style:solid;border-color:var(--good);color:var(--good);}
+.ss-tog.on .ss-sw{background:var(--good);}
+.ss-tog.on .ss-sw::after{transform:translateX(11px);}
+.ex.ss-in{border-left:3px solid var(--good);}
+.ex.ss-first{margin-bottom:6px;border-bottom-left-radius:6px;border-bottom-right-radius:6px;}
+.ex.ss-last{border-top-left-radius:6px;border-top-right-radius:6px;}
+.ss-label{display:flex;align-items:center;gap:8px;margin:4px 0 7px 2px;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--good);}
+.ss-label .ss-x{margin-left:auto;background:none;border:none;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:none;cursor:pointer;padding:2px 4px;font-family:inherit;}
+.set-foot .add-set{flex:1 0 auto;white-space:nowrap;}
+.set-foot .rem-set{white-space:nowrap;}
+.set-foot .ss-tog{flex:1 0 auto;justify-content:center;}
+
 .add-set{
   flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
   padding:11px;border:1px dashed var(--line-2);border-radius:11px;
@@ -853,7 +871,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 <div class="sheet" id="sheet">
   <div class="grip"></div>
   <div class="sh-head">
-    <div class="sh-title">Add an exercise</div>
+    <div class="sh-title" id="shTitle">Add an exercise</div>
     <input class="sh-search" id="exSearch" placeholder="Search or type a new lift" autocomplete="off" autocapitalize="words">
   </div>
   <div class="sh-list" id="exList"></div>
@@ -879,7 +897,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.09.30e";
+const APP_VERSION = "2026.10.04s";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -1022,11 +1040,20 @@ function renderToday(){
     list.appendChild(banner);
   }
 
+  const ssOf=i=>{ const e=draft.exercises[i]; return e&&e.ss; };
   draft.exercises.forEach((ex,ei)=>{
     const prev=prevFor(ex.name);
+    const ssPrev=ex.ss && ssOf(ei-1)===ex.ss, ssNext=ex.ss && ssOf(ei+1)===ex.ss;
+    if(ex.ss && !ssPrev && ssNext){
+      const lab=document.createElement("div"); lab.className="ss-label";
+      lab.innerHTML='Superset<button class="ss-x" type="button">Unlink</button>';
+      lab.querySelector(".ss-x").onclick=()=>{ const id=ex.ss; draft.exercises.forEach(e=>{ if(e.ss===id) delete e.ss; }); saveDraft(); renderToday(); };
+      list.appendChild(lab);
+    }
+    const ssCls=(ssPrev||ssNext)?(" ss-in"+(ssNext?" ss-first":"")+(ssPrev?" ss-last":"")):"";
     const allDone = ex.sets.length>0 && ex.sets.every(s=>s.done);
     const collapsed = allDone && ex.collapsed!==false;   // auto-collapse when every set is done
-    const card=document.createElement("div"); card.className="ex"+(collapsed?" collapsed":"");
+    const card=document.createElement("div"); card.className="ex"+(collapsed?" collapsed":"")+ssCls;
 
     if(collapsed){
       const cvol=ex.sets.reduce((t,s)=>t+num(s.weight)*num(s.reps),0);
@@ -1143,10 +1170,15 @@ function renderToday(){
     foot.appendChild(add);
     if(ex.sets.length>1){
       const rem=document.createElement("button"); rem.className="rem-set";
-      rem.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg> Remove set';
+      rem.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg> Remove';
       rem.onclick=()=>{ if(ex.sets.length>1){ ex.sets.pop(); markActivity(); saveDraft(); renderToday(); } };
       foot.appendChild(rem);
     }
+    const tog=document.createElement("button"); tog.type="button"; tog.className="ss-tog"+(ssNext?" on":"");
+    tog.setAttribute("aria-pressed",ssNext?"true":"false");
+    tog.innerHTML='<span class="ss-sw"></span>Superset';
+    tog.onclick=()=>{ if(ssNext) ssUnlinkNext(ei); else ssLinkNext(ei); };
+    foot.appendChild(tog);
     grid.appendChild(foot);
     card.appendChild(grid);
     list.appendChild(card);
@@ -1873,12 +1905,33 @@ function renderSync(){
 }
 
 /* ======================= EXERCISE PICKER SHEET ======================= */
+/* ---- superset links (display only) ---- */
+let ssPick=null;   // {id, with} while picking the lift to pair below
+const ssNewId=()=>"ss"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+function ssCleanup(){
+  const ex=draft.exercises;
+  ex.forEach((e,i)=>{ if(e.ss && !(ex[i-1]&&ex[i-1].ss===e.ss) && !(ex[i+1]&&ex[i+1].ss===e.ss)) delete e.ss; });
+}
+function ssLinkNext(ei){
+  const a=draft.exercises[ei], b=draft.exercises[ei+1];
+  if(!b){ a.ss=a.ss||ssNewId(); saveDraft(); ssPick={id:a.ss, with:a.name}; openSheet(); return; }
+  const id=a.ss||b.ss||ssNewId(), old=b.ss;
+  draft.exercises.forEach(e=>{ if(old && e.ss===old) e.ss=id; });
+  a.ss=id; b.ss=id; saveDraft(); renderToday();
+}
+function ssUnlinkNext(ei){
+  const ex=draft.exercises, old=ex[ei].ss, nid=ssNewId();
+  for(let i=ei+1;i<ex.length && ex[i].ss===old;i++) ex[i].ss=nid;
+  ssCleanup(); saveDraft(); renderToday();
+}
 function openSheet(){
+  document.getElementById("shTitle").textContent = ssPick ? "Superset with "+ssPick.with : "Add an exercise";
   document.getElementById("scrim").classList.add("show");
   document.getElementById("sheet").classList.add("show");
   const s=document.getElementById("exSearch"); s.value=""; renderSheet("");
 }
 function closeSheet(){
+  if(ssPick){ ssPick=null; ssCleanup(); saveDraft(); renderToday(); }   // cancelled: nothing stays linked
   document.getElementById("scrim").classList.remove("show");
   const sh=document.getElementById("sheet"); sh.classList.remove("show"); sh.style.bottom="";
   document.getElementById("exSearch").blur();
@@ -1908,7 +1961,7 @@ function rowEl(label,tag,create,value){
 }
 function addExercise(name){
   const clean=(name||"").trim(); if(!clean) return;
-  draft.exercises.push({ name:clean, sets:[
+  draft.exercises.push({ name:clean, ...(ssPick?{ss:ssPick.id}:{}), sets:[
     {weight:"",reps:"",done:false},
     {weight:"",reps:"",done:false},
     {weight:"",reps:"",done:false}
@@ -1973,7 +2026,7 @@ function splitSuperset(e){
   const dets=String(e.detail||"").split(/\s*\|\s*/);
   return names.map((n,idx)=>({ name:n.trim(), sets:(sets[idx]!==undefined?sets[idx]:(sets[0]||"")).trim(), detail:(dets[idx]!==undefined?dets[idx]:(e.detail||"")).trim(), note:e.note, tag:e.tag }));
 }
-function expandExercises(list){ const out=[]; (list||[]).forEach(e=>{ if(isSuperset(e)) splitSuperset(e).forEach(x=>out.push(x)); else out.push(e); }); return out; }
+function expandExercises(list){ const out=[]; (list||[]).forEach((e,i)=>{ if(isSuperset(e)){ const parts=splitSuperset(e), id=parts.length>1?"ssp"+i+Date.now().toString(36):null; parts.forEach(x=>out.push(id?Object.assign({},x,{ss:id}):x)); } else out.push(e); }); return out; }
 
 /* ---- network ---- */
 async function planFetch(payload){
@@ -2025,7 +2078,7 @@ function buildLayout(){
 /* ---- load a day into the Workout tab ---- */
 function buildDraftFromDay(day, todayFlag){
   draft=blankDraft(); draft.name=day.focus||""; draft.fromPlan=true; draft.planToday=!!todayFlag;
-  draft.exercises=expandExercises(day.exercises).map(e=>({ name:e.name, plan:{sets:e.sets,detail:e.detail,note:e.note,tag:e.tag}, sets:makeSetsFromPlan(e.sets) }));
+  draft.exercises=expandExercises(day.exercises).map(e=>({ name:e.name, ...(e.ss?{ss:e.ss}:{}), plan:{sets:e.sets,detail:e.detail,note:e.note,tag:e.tag}, sets:makeSetsFromPlan(e.sets) }));
   saveDraft();
 }
 function startPlanDay(day){
