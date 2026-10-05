@@ -434,29 +434,6 @@ input,textarea{font-family:inherit;}
   padding:8px 15px;font-size:13px;font-weight:750;cursor:pointer;font-variant-numeric:tabular-nums;
 }
 .seg button.sel{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
-.sound-list{display:flex;flex-direction:column;gap:8px;}
-.sound-opt{
-  display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-md);
-  border:1.5px solid var(--line);background:var(--card);cursor:pointer;
-  transition:border-color .15s,background .15s,transform .12s var(--ease);
-}
-.sound-opt:active{transform:scale(.99);}
-.sound-opt.sel{border-color:var(--accent);background:var(--accent-wash);}
-.sound-opt .ico{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--paper-2);color:var(--ink-2);}
-.sound-opt.sel .ico{background:var(--accent);color:var(--on-accent);}
-.sound-opt .ico svg{width:15px;height:15px;}
-.sound-opt .nm{flex:1;font-size:15.5px;font-weight:700;color:var(--ink);}
-.sound-opt .desc{font-size:12.5px;font-weight:600;color:var(--muted);}
-.sound-opt .chk{color:var(--accent);opacity:0;flex-shrink:0;}
-.sound-opt.sel .chk{opacity:1;}
-.sound-opt .chk svg{width:18px;height:18px;display:block;}
-.vol-row{display:flex;align-items:center;gap:12px;margin-top:14px;}
-.vol-row .vol-ic{color:var(--muted);flex-shrink:0;display:flex;}
-.vol-row .vol-ic svg{width:20px;height:20px;}
-.vol-row input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:5px;background:var(--line-2);outline:none;}
-.vol-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);cursor:pointer;border:3px solid var(--card);box-shadow:0 1px 4px oklch(0.25 0.02 55/.3);}
-.vol-row input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;border:3px solid var(--card);}
-.vol-row .vol-val{font-size:13px;font-weight:750;color:var(--ink-2);width:42px;text-align:right;flex-shrink:0;}
 .toggle-row{display:flex;align-items:center;gap:14px;justify-content:space-between;margin:16px 2px 2px;}
 .toggle-row .tg-t{font-size:14.5px;font-weight:750;color:var(--ink);}
 .toggle-row .tg-s{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5;}
@@ -797,17 +774,8 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
   <!-- ===================== MORE ===================== -->
   <section class="view" id="view-settings">
     <h2 class="h-sec">Rest timer</h2>
-    <p class="note-txt" style="margin-top:0;">Default rest between sets. Tweak it live with the −15 / +15 buttons on the timer.</p>
+    <p class="note-txt" style="margin-top:0;">Default rest between sets. Tweak it live with the −15 / +15 buttons on the timer, which counts down on screen.</p>
     <div class="seg" id="restSeg"></div>
-
-    <h2 class="h-sec">Rest alert</h2>
-    <p class="note-txt" style="margin-top:0;">A gentle chime when your rest is up. Tap each one to hear it. It's a custom sound, not the iPhone's alarm, and it plays while the app is open.</p>
-    <div class="sound-list" id="alertList"></div>
-    <div class="vol-row">
-      <span class="vol-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a4 4 0 010 6"/><path d="M18.5 7a7 7 0 010 10"/></svg></span>
-      <input type="range" id="alertVol" min="0" max="100" step="5" aria-label="Alert volume">
-      <span class="vol-val num" id="alertVolVal">70%</span>
-    </div>
 
     <h2 class="h-sec">Units</h2>
     <p class="note-txt" style="margin-top:0;">Weights are tracked in <b id="unitLabel">lb</b>. <a href="#" id="unitToggle" style="color:var(--accent);font-weight:700;text-decoration:none;">Switch to kg</a></p>
@@ -897,7 +865,7 @@ const PERSONAL_MESSAGE = "";
 const PERSONAL_FROM    = "From Stock";
 const DAD_NAME         = "Trevor";
 /* ========================================================================== */
-const APP_VERSION = "2026.10.04s";
+const APP_VERSION = "2026.10.05a";
 /* Trevor's profile — saved for the daily brief's age-aware tone and a future
    "strength for his age" feature. Not shown in the app yet. */
 const PROFILE = { age: 50, sex: "male", heightIn: 70, bodyweightLb: 158, bodyFatPct: 10 };
@@ -907,10 +875,8 @@ const DRAFT_KEY = "trever_draft_v2";
 const UNIT_KEY  = "trever_unit_v2";
 const BW_KEY    = "trever_bw_v2";
 const REST_KEY  = "trever_rest_v2";
+const RESTEND_KEY = "trever_restend_v2";   // running rest timer's end time, so it survives leaving the app
 const ROUTINES_KEY = "trever_routines_v2";
-const ALERT_KEY    = "trever_alert_v2";
-const ALERTVOL_KEY = "trever_alertvol_v2";
-const BG_KEY       = "trever_bgalert_v2";
 const TOKEN_KEY    = "trever_synctoken_v2";
 const SYNCED_KEY   = "trever_syncedat_v2";
 const SYNCON_KEY   = "trever_syncon_v2";
@@ -977,11 +943,6 @@ function blankDraft(){ return { exercises:[], feel:"", note:"", startedAt:null, 
 let draft = loadDraft();
 let unit = localStorage.getItem(UNIT_KEY) || "lb";
 let restTarget = parseInt(localStorage.getItem(REST_KEY),10) || 120;
-let alertSound = localStorage.getItem(ALERT_KEY) || "soft";
-if(!["soft","bell","wood","off"].includes(alertSound)) alertSound="soft";
-let alertVol = parseFloat(localStorage.getItem(ALERTVOL_KEY)); if(isNaN(alertVol)) alertVol=0.7;
-alertVol = Math.min(1, Math.max(0, alertVol));
-let bgAlert    = localStorage.getItem(BG_KEY)==="1";
 let syncOn     = !DEMO && localStorage.getItem(SYNCON_KEY)!=="0";   // default on; never in demo
 let sessionPRs = {};   // exercise name (lowercased) -> best e1RM already celebrated this session
 
@@ -1146,14 +1107,14 @@ function renderToday(){
         if(!s.done){
           if(!num(s.weight) && w.placeholder) s.weight=w.placeholder;
           if(!num(s.reps) && r.placeholder) s.reps=r.placeholder;
-          s.done=true; ensureAudio(); if(navigator.vibrate){ try{navigator.vibrate(18);}catch(e){} } markStart(); checkPR(ex.name, s);
+          s.done=true; if(navigator.vibrate){ try{navigator.vibrate(18);}catch(e){} } markStart(); checkPR(ex.name, s);
         } else s.done=false;
         saveDraft(); renderToday();
       };
       // separate, optional rest button — he taps it only when he wants the timer
       const rb=document.createElement("button"); rb.className="rest-btn"; rb.setAttribute("aria-label","Start rest timer");
       rb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5h6"/><path d="M12 2.5v2"/><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.5"/></svg>';
-      rb.onclick=()=>{ ensureAudio(); markStart(); startRest(); };
+      rb.onclick=()=>{ markStart(); startRest(); };
       const act=document.createElement("div"); act.className="set-act"; act.append(ck,rb);
       row.append(idx,p,w,r,act); grid.appendChild(row);
     });
@@ -1222,55 +1183,19 @@ function tickClock(){
 }
 function stopWorkoutClock(){ if(clockInt){ clearInterval(clockInt); clockInt=null; } document.getElementById("clock").classList.remove("on"); }
 
-/* ---------- rest timer (countdown + custom alert) ----------
-   The chime is scheduled on the audio hardware clock (not a JS timer), so it has the
-   best chance of firing even if Trevor has switched to YouTube or a podcast. The
-   optional keep-alive (bgAlert) holds the audio session open while resting. iOS
-   background behavior varies, so this is best-effort: rock solid in the foreground,
-   and the cross-app case is worth testing on his actual phone. */
-let restInt=null, restEnd=0, audioCtx=null, scheduledNodes=[], keepAliveSrc=null;
-function ensureAudio(){
-  try{ audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
-    if(audioCtx.state==="suspended") audioCtx.resume(); }catch(e){}
-}
-function tone(at,freq,dur,peak,type){
-  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-  o.type=type||"sine"; o.frequency.value=freq; o.connect(g); g.connect(audioCtx.destination);
-  const pk=Math.max(0.0004, peak*alertVol);             // in-app volume scaler
-  g.gain.setValueAtTime(0.0001,at);
-  g.gain.exponentialRampToValueAtTime(pk,at+0.025);     // soft attack, no click
-  g.gain.exponentialRampToValueAtTime(0.0001,at+dur);   // natural fade
-  o.start(at); o.stop(at+dur+0.05); scheduledNodes.push(o);
-}
-function clearScheduled(){ scheduledNodes.forEach(n=>{ try{n.stop();}catch(e){} try{n.disconnect();}catch(e){} }); scheduledNodes=[]; }
-function scheduleAlert(at){
-  if(!audioCtx || alertSound==="off") return;
-  clearScheduled();
-  if(alertSound==="bell"){            // single warm bell with an inharmonic shimmer
-    tone(at,880,1.10,0.24,"sine");
-    tone(at,880*2.76,0.85,0.06,"sine");
-  } else if(alertSound==="wood"){     // quiet low "tok tok", minimal, un-musical
-    tone(at,196,0.09,0.26,"sine"); tone(at+0.14,156,0.11,0.22,"sine");
-  } else {                            // soft (default): warm rising two-note
-    tone(at,587.33,0.20,0.20,"sine"); tone(at+0.17,880,0.34,0.22,"sine");
-  }
-}
-function startKeepAlive(){
-  if(!audioCtx || keepAliveSrc) return;
-  try{ const buf=audioCtx.createBuffer(1,audioCtx.sampleRate,audioCtx.sampleRate);
-    const src=audioCtx.createBufferSource(); src.buffer=buf; src.loop=true;
-    const g=audioCtx.createGain(); g.gain.value=0.0002; src.connect(g); g.connect(audioCtx.destination);
-    src.start(); keepAliveSrc=src; }catch(e){}
-}
-function stopKeepAlive(){ if(keepAliveSrc){ try{keepAliveSrc.stop();}catch(e){} try{keepAliveSrc.disconnect();}catch(e){} keepAliveSrc=null; } }
-function rescheduleAlert(){ if(audioCtx){ const remain=Math.max(0.05,(restEnd-Date.now())/1000); scheduleAlert(audioCtx.currentTime+remain); } }
+/* ---------- rest timer (on-screen countdown) ----------
+   No chime: web audio only plays while the app is in the foreground, so a sound
+   promised a rest alert the app could not actually deliver once the phone was
+   locked or another app was open. The countdown is honest about being a screen
+   you look at. navigator.vibrate is kept as a bonus - it is a no-op on iOS Safari.
+   The end time is saved to localStorage, so leaving the app (or iOS reloading it
+   in the background) does not lose the countdown. */
+let restInt=null, restEnd=0;
 function startRest(){
   const el=document.getElementById("rest");
   el.classList.remove("done","ring");
   document.getElementById("restLab").textContent="Rest";
-  restEnd=Date.now()+restTarget*1000;
-  ensureAudio(); if(bgAlert) startKeepAlive();
-  if(audioCtx) scheduleAlert(audioCtx.currentTime+restTarget);
+  restEnd=Date.now()+restTarget*1000; saveRestEnd();
   el.classList.add("show"); tickRest();
   if(restInt) clearInterval(restInt); restInt=setInterval(tickRest,250);
 }
@@ -1290,19 +1215,35 @@ function tickRest(){
   }
   document.getElementById("restTime").textContent=fmtClock(remain);
 }
+function saveRestEnd(){ if(DEMO) return; try{ if(restEnd) localStorage.setItem(RESTEND_KEY,String(restEnd)); else localStorage.removeItem(RESTEND_KEY); }catch(e){} }
+/* App reopened (or iOS reloaded it in the background) with a rest still running:
+   put the countdown back up. If it ran out while away, flash "Rest done" so it is
+   clear, unless that was long ago. */
+function resumeRest(){
+  if(DEMO) return;
+  let end=0; try{ end=parseInt(localStorage.getItem(RESTEND_KEY),10)||0; }catch(e){}
+  if(!end) return;
+  if(Date.now()-end>10*60*1000){ restEnd=0; saveRestEnd(); return; }
+  restEnd=end;
+  const el=document.getElementById("rest");
+  el.classList.remove("done","ring"); document.getElementById("restLab").textContent="Rest";
+  el.classList.add("show"); tickRest();
+  if(restEnd>Date.now() && !restInt) restInt=setInterval(tickRest,250);
+}
 function adjustRest(delta){
   const el=document.getElementById("rest");
   if(el.classList.contains("done")){
     if(delta<0) return;
-    restEnd=Date.now()+delta*1000; el.classList.remove("done","ring");
+    restEnd=Date.now()+delta*1000; saveRestEnd(); el.classList.remove("done","ring");
     document.getElementById("restLab").textContent="Rest";
-    rescheduleAlert(); if(!restInt) restInt=setInterval(tickRest,250); tickRest(); return;
+    if(!restInt) restInt=setInterval(tickRest,250); tickRest(); return;
   }
   restEnd+=delta*1000;
   if(restEnd-Date.now()<5000) restEnd=Date.now()+5000;
-  rescheduleAlert(); tickRest();
+  saveRestEnd();
+  tickRest();
 }
-function closeRest(){ const el=document.getElementById("rest"); el.classList.remove("show","done","ring"); if(restInt){clearInterval(restInt);restInt=null;} clearScheduled(); stopKeepAlive(); }
+function closeRest(){ const el=document.getElementById("rest"); el.classList.remove("show","done","ring"); if(restInt){clearInterval(restInt);restInt=null;} restEnd=0; saveRestEnd(); }
 
 /* ---------- PR celebration ---------- */
 function historyBestE1(name){
@@ -1751,30 +1692,6 @@ function renderRestSeg(){
     b.onclick=()=>{ restTarget=v; localStorage.setItem(REST_KEY,String(v)); renderRestSeg(); toast("Rest set to "+fmtClock(v)); };
     seg.appendChild(b);
   });
-}
-function renderAlertList(){
-  const host=document.getElementById("alertList"); if(!host) return; host.innerHTML="";
-  const PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-  const MUTE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9v6h4l5 4V5L9 9H5z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
-  const CHK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
-  [["soft","Soft","Warm two-note"],["bell","Bell","Gentle bell"],["wood","Wood","Quiet low tok"],["off","Off","No sound"]].forEach(o=>{
-    const row=document.createElement("div"); row.className="sound-opt"+(o[0]===alertSound?" sel":"");
-    row.innerHTML='<span class="ico">'+(o[0]==="off"?MUTE:PLAY)+'</span>'+
-      '<span class="nm">'+o[1]+'</span><span class="desc">'+o[2]+'</span><span class="chk">'+CHK+'</span>';
-    row.onclick=()=>{
-      alertSound=o[0]; localStorage.setItem(ALERT_KEY,o[0]); renderAlertList();
-      if(o[0]!=="off"){ ensureAudio(); if(audioCtx) scheduleAlert(audioCtx.currentTime+0.06); }
-    };
-    host.appendChild(row);
-  });
-}
-function renderBgSwitch(){ const s=document.getElementById("bgSwitch"); if(s) s.classList.toggle("on",bgAlert); }
-function renderAlertVol(){
-  const el=document.getElementById("alertVol"); if(!el) return;
-  const pct=Math.round(alertVol*100);
-  el.value=pct;
-  el.style.background="linear-gradient(90deg, var(--accent) "+pct+"%, var(--line-2) "+pct+"%)";
-  document.getElementById("alertVolVal").textContent=pct+"%";
 }
 async function exportData(){
   const data=JSON.stringify({app:"trever-lifting-log",version:2,unit,restTarget,exportedFrom:DAD_NAME,
@@ -2307,13 +2224,6 @@ document.getElementById("dayName").addEventListener("keydown",e=>{ if(e.key==="E
 document.getElementById("restClose").onclick=closeRest;
 document.getElementById("restMinus").onclick=()=>adjustRest(-15);
 document.getElementById("restPlus").onclick=()=>adjustRest(15);
-/* background-alert toggle removed: iOS will not play web audio from the background */
-document.getElementById("alertVol").addEventListener("input",e=>{
-  alertVol=Math.min(1,Math.max(0,(+e.target.value)/100)); localStorage.setItem(ALERTVOL_KEY,String(alertVol)); renderAlertVol();
-});
-document.getElementById("alertVol").addEventListener("change",()=>{
-  if(alertSound!=="off"){ ensureAudio(); if(audioCtx) scheduleAlert(audioCtx.currentTime+0.06); }
-});
 document.getElementById("syncSwitch").onclick=()=>{
   syncOn=!syncOn; localStorage.setItem(SYNCON_KEY,syncOn?"1":"0"); renderSync();
   if(syncOn){ syncToken(); syncPull(); syncPush(); }
@@ -2349,8 +2259,8 @@ function hideWhatsNew(){ const b=document.getElementById("whatsNew"); if(b) b.cl
 (function(){ const g=document.getElementById("wnGo"), x=document.getElementById("wnClose");
   if(g) g.onclick=()=>{ switchTab("records"); hideWhatsNew(); };
   if(x) x.onclick=hideWhatsNew; })();
-document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ ensureAudio(); checkForUpdate();
-  if(document.getElementById("rest").classList.contains("show")) tickRest(); tickClock(); } });
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ checkForUpdate();
+  if(document.getElementById("rest").classList.contains("show")) tickRest(); else resumeRest(); tickClock(); } });
 
 /* keep the focused text field visible above the on-screen keyboard */
 function isField(el){ return el && (el.tagName==="INPUT"||el.tagName==="TEXTAREA"); }
@@ -2394,7 +2304,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
   document.getElementById("appVer").textContent=APP_VERSION;
   if(DEMO) document.getElementById("barSub").textContent="Sample data preview";
   try{ if(new URLSearchParams(location.search).has("v")){ setTimeout(showWhatsNew,600); history.replaceState(null,"",location.pathname+(DEMO?"?demo=1":"")); } }catch(e){}
-  renderRestSeg(); renderAlertList(); renderAlertVol(); renderBgSwitch(); renderSync(); renderPlan();
+  renderRestSeg(); renderSync(); renderPlan(); resumeRest();
   if(PERSONAL_MESSAGE && PERSONAL_MESSAGE.trim()){
     document.getElementById("personalMsg").style.display="block";
     document.getElementById("personalMsgText").textContent=PERSONAL_MESSAGE;
