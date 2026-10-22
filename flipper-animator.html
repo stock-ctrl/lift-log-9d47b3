@@ -54,6 +54,10 @@ input[type=number]{width:52px}
   border:2px solid #555;flex-shrink:0
 }
 .sw.on{border-color:var(--orange)}
+.sz{width:13px;height:16px;background:#111;border:1px solid var(--border);
+  border-radius:3px;cursor:pointer;font-size:9px;color:var(--text);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sz.on{background:#1e0d00;border-color:var(--orange)}
 #sw-white{background:#fff}
 #sw-black{background:#111;border-color:#555}
 
@@ -161,6 +165,14 @@ input[type=number]{width:52px}
     <button class="tb" title="Clear frame"     onclick="doClear()">&#128465;</button>
     <div class="sep"></div>
     <button class="tb" title="Undo  Ctrl+Z"    onclick="doUndo()">&#8617;</button>
+    <button class="tb" id="tb-onion" title="Onion skin  O" onclick="toggleOnion()">&#8857;</button>
+    <div class="sep"></div>
+    <div style="font-size:9px;color:var(--muted);margin-bottom:1px">PX</div>
+    <div style="display:flex;gap:2px">
+      <button class="sz on" id="sz-1" onclick="setBrush(1)">1</button>
+      <button class="sz" id="sz-2" onclick="setBrush(2)">2</button>
+      <button class="sz" id="sz-3" onclick="setBrush(3)">3</button>
+    </div>
   </div>
 
   <div id="ea">
@@ -211,6 +223,8 @@ let playing = false;
 let playTimer = null;
 let playIdx = 0;
 let hx = -1, hy = -1;
+let onionSkin = false;
+let brushSz = 1;
 
 // ── DOM ────────────────────────────────────────────────────────────────────
 const eC  = document.getElementById('editor');
@@ -283,6 +297,12 @@ function flipV(px) {
 }
 function invert(px){ for(let i=0;i<px.length;i++) px[i]^=1 }
 
+function spBrush(px,x,y,c){
+  const h=Math.floor(brushSz/2);
+  for(let dy=0;dy<brushSz;dy++) for(let dx=0;dx<brushSz;dx++)
+    sp(px,x-h+dx,y-h+dy,c);
+}
+
 // ── Rendering ──────────────────────────────────────────────────────────────
 function render(thumb=true) {
   renderEd();
@@ -298,6 +318,13 @@ function renderEd() {
   eX.fillStyle='#fff';
   for(let y=0;y<H;y++) for(let x=0;x<W;x++)
     if(px[y*W+x]) eX.fillRect(x*SCALE,y*SCALE,SCALE,SCALE);
+
+  if(onionSkin&&curF>0){
+    const op=frames[curF-1];
+    eX.fillStyle='rgba(255,255,255,.22)';
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++)
+      if(op[y*W+x]) eX.fillRect(x*SCALE,y*SCALE,SCALE,SCALE);
+  }
 
   // Hover
   if(!drawing&&hx>=0&&hy>=0){
@@ -421,6 +448,18 @@ function setColor(c){
   document.getElementById('sw-black').classList.toggle('on',c===0);
 }
 
+function toggleOnion(){
+  onionSkin=!onionSkin;
+  document.getElementById('tb-onion').classList.toggle('on',onionSkin);
+  renderEd();
+}
+
+function setBrush(s){
+  brushSz=s;
+  document.querySelectorAll('.sz').forEach(b=>b.classList.remove('on'));
+  document.getElementById('sz-'+s).classList.add('on');
+}
+
 // ── Canvas events ──────────────────────────────────────────────────────────
 function xy(e){
   const r=eC.getBoundingClientRect();
@@ -459,7 +498,7 @@ function startD(x,y,c){
   if(tool==='pencil'||tool==='eraser'){
     saveUndo();
     const col=tool==='eraser'?0:(c??color);
-    sp(frames[curF],x,y,col);render();
+    spBrush(frames[curF],x,y,col);render();
   }
 }
 
@@ -467,7 +506,7 @@ function contD(x,y){
   if(!drawing)return;
   if(tool==='pencil'||tool==='eraser'){
     const col=tool==='eraser'?0:color;
-    line(frames[curF],lastX,lastY,x,y,col);
+    (function bl(x0,y0,x1,y1){let dx=Math.abs(x1-x0),sx=x0<x1?1:-1;let dy=-Math.abs(y1-y0),sy=y0<y1?1:-1,e=dx+dy;for(;;){spBrush(frames[curF],x0,y0,col);if(x0===x1&&y0===y1)break;const e2=2*e;if(e2>=dy){e+=dy;x0+=sx}if(e2<=dx){e+=dx;y0+=sy}}})(lastX,lastY,x,y);
     lastX=x;lastY=y;render(false);
   } else if(tool==='line'){
     temp=clonePx(frames[curF]);
@@ -499,6 +538,7 @@ document.addEventListener('keydown',e=>{
     case'l':setTool('line');break;
     case'r':setTool('rect');break;
     case'g':toggleGrid();break;
+    case'o':toggleOnion();break;
     case'x':setColor(color===1?0:1);break;
     case' ':e.preventDefault();togglePlay();break;
     case'arrowleft': if(curF>0)selFrame(curF-1);break;
@@ -665,7 +705,8 @@ document.addEventListener('keydown',e=>{
 P  Pencil        E  Eraser
 F  Fill          L  Line
 R  Rectangle     G  Toggle grid
-X  Swap color    Space  Play/Pause
+X  Swap color    O  Onion skin
+Space  Play/Pause
 
 Ctrl+Z  Undo
 ← / →  Prev / Next frame
@@ -677,19 +718,30 @@ Frame list: + Add  ⊕ Dup  ↑↓ Reorder  ✕ Delete`);
 
 // ── Init ───────────────────────────────────────────────────────────────────
 (function init(){
-  // Pre-load a 4-frame overhead press example (edit freely or clear all)
-  [38,26,14,26].forEach(by=>{
+  let _s=0xBEEF1337;
+  const rnd=()=>{_s=(_s^(_s<<13))>>>0;_s=(_s^(_s>>17))>>>0;_s=(_s^(_s<<5))>>>0;return _s/0x100000000;};
+  const NS=70,NF=12,SPD=1/NF,FX=42,FY=21;
+  const stx=[],sty=[],stz=[];
+  for(let i=0;i<NS;i++){stx.push(rnd()*2-1);sty.push(rnd()*2-1);stz.push(rnd());}
+  for(let f=0;f<NF;f++){
     const px=newPx();
-    for(let y=by-5;y<=by+5;y++) for(let x=29;x<=33;x++) sp(px,x,y,1); // left plate
-    for(let y=by-5;y<=by+5;y++) for(let x=95;x<=99;x++) sp(px,x,y,1); // right plate
-    for(let x=34;x<=94;x++) sp(px,x,by,1);                              // bar
-    for(let dy=-4;dy<=4;dy++) for(let dx=-4;dx<=4;dx++)
-      if(dx*dx+dy*dy<=16) sp(px,64+dx,8+dy,1);                         // head
-    for(let y=12;y<=42;y++) sp(px,64,y,1);                              // body
-    line(px,64,20,34,by,1);line(px,64,20,94,by,1);                     // arms
-    line(px,64,42,53,62,1);line(px,64,42,75,62,1);                     // legs
+    for(let i=0;i<NS;i++){
+      const zr=stz[i]-f*SPD;
+      const z=zr>0?zr:zr+1;
+      const zp=zr+SPD;
+      const cx=Math.round(64+stx[i]*FX/z);
+      const cy=Math.round(32+sty[i]*FY/z);
+      if(cx<0||cx>=128||cy<0||cy>=64) continue;
+      sp(px,cx,cy,1);
+      if(zr>0&&zp<=1){
+        const ox=Math.round(64+stx[i]*FX/zp);
+        const oy=Math.round(32+sty[i]*FY/zp);
+        if(ox>=0&&ox<128&&oy>=0&&oy<64) line(px,ox,oy,cx,cy,1);
+      }
+    }
     frames.push(px);
-  });
+  }
+  document.getElementById('fps-in').value=8;
   rebuildFL();render();
   togglePlay();
 })();
