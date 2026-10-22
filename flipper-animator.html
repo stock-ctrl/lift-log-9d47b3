@@ -600,7 +600,7 @@ function buildZip(files){
   out.set(eocd,pos);return out;
 }
 
-function exportZip(){
+async function exportZip(){
   const name=(document.getElementById('anim-name').value.trim()||'my_animation').replace(/[^a-zA-Z0-9_-]/g,'_');
   const fps=getFPS(),order=getOrder();
   const enc=new TextEncoder();
@@ -648,9 +648,13 @@ Display: 128 × 64 px, 1-bit monochrome OLED.
   ];
 
   const blob=new Blob([buildZip(zipFiles)],{type:'application/zip'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=`${name}.zip`;a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),6000);
+  const dl=await claude.use('downloads');
+  if(!dl){alert('Downloads not available in this viewer.');return}
+  try{
+    await dl.save({filename:`${name}.zip`,data:blob});
+  }catch(e){
+    if(e.code!=='declined') alert('Export failed: '+(e.message||e.code));
+  }
 }
 
 // ── Keyboard shortcut cheatsheet on ? ────────────────────────────────────
